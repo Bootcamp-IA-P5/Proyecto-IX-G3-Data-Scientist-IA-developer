@@ -1,4 +1,20 @@
-# Entorno virtual de Python
+#Entorno virtual de Python
+venv/
+.venv/
+*.pyc
+__pycache__/
+
+#Archivos de caché y compilación
+pycache/
+*.pyc
+*.pyd
+
+#Archivos específicos de Pytest
+.pytest_cache/
+
+#Archivos de datos o modelos guardados (si no deben ir al repositorio)
+*.joblib
+*.h5# Entorno virtual de Python
 venv/
 .venv/
 *.pyc
