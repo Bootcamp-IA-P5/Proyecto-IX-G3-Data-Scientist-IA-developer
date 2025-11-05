@@ -1,4 +1,4 @@
-#Entorno virtual de Python
+# Entorno virtual de Python
 venv/
 .venv/
 *.pyc
@@ -9,9 +9,53 @@ pycache/
 *.pyc
 *.pyd
 
-#Archivos específicos de Pytest
+# Archivos específicos de Pytest
 .pytest_cache/
 
-#Archivos de datos o modelos guardados (si no deben ir al repositorio)
+# Archivos de datos o modelos guardados (si no deben ir al repositorio)
 *.joblib
 *.h5
+
+# Carpeta de datos procesados (archivos .pkl pesados)
+backend/data/*.pkl
+!backend/data/.gitkeep
+!backend/data/stroke_dataset.csv
+
+# Archivos de macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails de macOS
+._*
+
+# Archivos temporales de macOS
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directorios de red en macOS
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Archivos de Jupyter Notebook
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Archivos de entorno
+.env
+.env.local
+
+# Archivos de IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
