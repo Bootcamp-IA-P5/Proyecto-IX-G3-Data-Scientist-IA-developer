@@ -16,10 +16,10 @@ pycache/
 *.joblib
 *.h5
 
-# Carpeta de datos procesados (archivos .pkl pesados)
-backend/data/*.pkl
-!backend/data/.gitkeep
-!backend/data/stroke_dataset.csv
+# Carpeta de datos procesados
+data/raw/
+data/processed/
+
 
 # Archivos de macOS
 .DS_Store
