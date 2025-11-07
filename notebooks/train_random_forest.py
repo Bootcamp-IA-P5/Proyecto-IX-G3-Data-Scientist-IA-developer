@@ -454,12 +454,12 @@ os.makedirs('../models', exist_ok=True)
 
 # Guardar modelo
 joblib.dump(rf_model, '../models/random_forest_model.pkl')
-print("✅ Modelo guardado: backend/models/random_forest_model.pkl")
+print("✅ Modelo guardado: models/random_forest_model.pkl")
 
 # Guardar mejores parámetros
 with open('../models/rf_best_params.pkl', 'wb') as f:
     pickle.dump(best_params, f)
-print("✅ Mejores parámetros guardados: backend/models/rf_best_params.pkl")
+print("✅ Mejores parámetros guardados: models/rf_best_params.pkl")
 
 # Guardar resultados de evaluación
 results = {
@@ -500,7 +500,7 @@ results = {
 
 with open('../models/rf_results.pkl', 'wb') as f:
     pickle.dump(results, f)
-print("✅ Resultados guardados: backend/models/rf_results.pkl")
+print("✅ Resultados guardados: models/rf_results.pkl")
 
 print("\n" + "="*80)
 print("🎉 ENTRENAMIENTO COMPLETADO")
