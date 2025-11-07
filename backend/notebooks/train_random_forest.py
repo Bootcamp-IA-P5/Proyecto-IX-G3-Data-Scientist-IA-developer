@@ -258,6 +258,124 @@ print(f"\n📄 REPORTE DE CLASIFICACIÓN:")
 print(classification_report(y_test, y_test_pred, target_names=['No Stroke', 'Stroke']))
 
 # ============================================================================
+# AJUSTE DE THRESHOLD ÓPTIMO
+# ============================================================================
+print("\n" + "="*80)
+print("🎯 AJUSTE DE THRESHOLD ÓPTIMO")
+print("="*80)
+print("Buscando threshold que maximice Recall (mínimo 0.70) manteniendo F1 razonable...\n")
+
+# Probar diferentes thresholds en validation set
+thresholds = np.arange(0.1, 0.6, 0.05)
+best_threshold = 0.5
+best_recall = 0
+best_f1 = 0
+best_metrics = None
+
+results_threshold = []
+
+for threshold in thresholds:
+    # Predicciones con threshold ajustado
+    y_val_pred_thresh = (y_val_pred_proba >= threshold).astype(int)
+    
+    # Calcular métricas
+    recall_thresh = recall_score(y_val, y_val_pred_thresh)
+    precision_thresh = precision_score(y_val, y_val_pred_thresh)
+    f1_thresh = f1_score(y_val, y_val_pred_thresh)
+    
+    results_threshold.append({
+        'threshold': threshold,
+        'recall': recall_thresh,
+        'precision': precision_thresh,
+        'f1': f1_thresh
+    })
+    
+    # Buscar threshold que maximice Recall (objetivo: >0.70) con F1 razonable (>0.40)
+    if recall_thresh >= 0.70 and f1_thresh > best_f1:
+        best_threshold = threshold
+        best_recall = recall_thresh
+        best_f1 = f1_thresh
+        best_metrics = {
+            'recall': recall_thresh,
+            'precision': precision_thresh,
+            'f1': f1_thresh
+        }
+
+# Si no encontramos threshold con Recall >0.70, usar el que maximice F1 con Recall >0.50
+if best_recall < 0.70:
+    print("⚠️  No se encontró threshold con Recall >0.70. Buscando mejor compromiso...\n")
+    for result in results_threshold:
+        if result['recall'] >= 0.50 and result['f1'] > best_f1:
+            best_threshold = result['threshold']
+            best_recall = result['recall']
+            best_f1 = result['f1']
+            best_metrics = {
+                'recall': result['recall'],
+                'precision': result['precision'],
+                'f1': result['f1']
+            }
+
+print(f"✅ THRESHOLD ÓPTIMO ENCONTRADO: {best_threshold:.3f}")
+print(f"   Validation - Recall: {best_metrics['recall']:.4f}, Precision: {best_metrics['precision']:.4f}, F1: {best_metrics['f1']:.4f}")
+
+# Tabla de resultados
+print(f"\n📊 RESULTADOS POR THRESHOLD (Top 10 mejores F1):")
+df_threshold = pd.DataFrame(results_threshold).sort_values('f1', ascending=False)
+print(df_threshold.head(10).to_string(index=False))
+
+# ============================================================================
+# RE-EVALUACIÓN CON THRESHOLD ÓPTIMO
+# ============================================================================
+print("\n" + "="*80)
+print("🔄 RE-EVALUACIÓN CON THRESHOLD ÓPTIMO")
+print("="*80)
+
+# Validation con threshold óptimo
+y_val_pred_optimal = (y_val_pred_proba >= best_threshold).astype(int)
+val_recall_opt = recall_score(y_val, y_val_pred_optimal)
+val_precision_opt = precision_score(y_val, y_val_pred_optimal)
+val_f1_opt = f1_score(y_val, y_val_pred_optimal)
+val_accuracy_opt = accuracy_score(y_val, y_val_pred_optimal)
+
+print(f"\n📊 VALIDATION SET (Threshold = {best_threshold:.3f}):")
+print(f"   Accuracy:  {val_accuracy_opt:.4f}")
+print(f"   Precision: {val_precision_opt:.4f}")
+print(f"   Recall:    {val_recall_opt:.4f} ⭐ (MÉTRICA PRINCIPAL)")
+print(f"   F1-Score:  {val_f1_opt:.4f} ⭐")
+
+cm_val_opt = confusion_matrix(y_val, y_val_pred_optimal)
+print(f"\n📋 MATRIZ DE CONFUSIÓN:")
+print(cm_val_opt)
+print(f"\n   Verdaderos Negativos: {cm_val_opt[0,0]}")
+print(f"   Falsos Positivos:     {cm_val_opt[0,1]}")
+print(f"   Falsos Negativos:     {cm_val_opt[1,0]} ⚠️  (CRÍTICO)")
+print(f"   Verdaderos Positivos: {cm_val_opt[1,1]}")
+
+# Test con threshold óptimo
+y_test_pred_optimal = (y_test_pred_proba >= best_threshold).astype(int)
+test_recall_opt = recall_score(y_test, y_test_pred_optimal)
+test_precision_opt = precision_score(y_test, y_test_pred_optimal)
+test_f1_opt = f1_score(y_test, y_test_pred_optimal)
+test_accuracy_opt = accuracy_score(y_test, y_test_pred_optimal)
+
+print(f"\n📊 TEST SET (Threshold = {best_threshold:.3f}):")
+print(f"   Accuracy:  {test_accuracy_opt:.4f}")
+print(f"   Precision: {test_precision_opt:.4f}")
+print(f"   Recall:    {test_recall_opt:.4f} ⭐ (MÉTRICA PRINCIPAL)")
+print(f"   F1-Score:  {test_f1_opt:.4f} ⭐")
+
+cm_test_opt = confusion_matrix(y_test, y_test_pred_optimal)
+print(f"\n📋 MATRIZ DE CONFUSIÓN:")
+print(cm_test_opt)
+print(f"\n   Verdaderos Negativos: {cm_test_opt[0,0]}")
+print(f"   Falsos Positivos:     {cm_test_opt[0,1]}")
+print(f"   Falsos Negativos:     {cm_test_opt[1,0]} ⚠️  (CRÍTICO)")
+print(f"   Verdaderos Positivos: {cm_test_opt[1,1]}")
+
+print(f"\n📄 REPORTE DE CLASIFICACIÓN:")
+print(classification_report(y_test, y_test_pred_optimal, target_names=['No Stroke', 'Stroke']))
+
+# ============================================================================
 # VISUALIZACIONES
 # ============================================================================
 print("\n" + "="*80)
@@ -345,21 +463,38 @@ print("✅ Mejores parámetros guardados: backend/models/rf_best_params.pkl")
 
 # Guardar resultados de evaluación
 results = {
-    'validation': {
+    'validation_threshold_0.5': {
         'accuracy': val_accuracy,
         'precision': val_precision,
         'recall': val_recall,
         'f1_score': val_f1,
         'auc_roc': val_auc
     },
-    'test': {
+    'test_threshold_0.5': {
         'accuracy': test_accuracy,
         'precision': test_precision,
         'recall': test_recall,
         'f1_score': test_f1,
         'auc_roc': test_auc
     },
+    'validation_threshold_optimal': {
+        'threshold': float(best_threshold),
+        'accuracy': val_accuracy_opt,
+        'precision': val_precision_opt,
+        'recall': val_recall_opt,
+        'f1_score': val_f1_opt,
+        'auc_roc': val_auc
+    },
+    'test_threshold_optimal': {
+        'threshold': float(best_threshold),
+        'accuracy': test_accuracy_opt,
+        'precision': test_precision_opt,
+        'recall': test_recall_opt,
+        'f1_score': test_f1_opt,
+        'auc_roc': test_auc
+    },
     'best_params': best_params,
+    'optimal_threshold': float(best_threshold),
     'feature_importance': feature_importance.to_dict('records')
 }
 
@@ -370,9 +505,15 @@ print("✅ Resultados guardados: backend/models/rf_results.pkl")
 print("\n" + "="*80)
 print("🎉 ENTRENAMIENTO COMPLETADO")
 print("="*80)
-print(f"\n📊 RESUMEN FINAL:")
+print(f"\n📊 RESUMEN FINAL (Threshold = 0.5):")
 print(f"   Validation - Recall: {val_recall:.4f}, F1: {val_f1:.4f}, AUC: {val_auc:.4f}")
 print(f"   Test       - Recall: {test_recall:.4f}, F1: {test_f1:.4f}, AUC: {test_auc:.4f}")
-print("\n✅ Modelo listo para usar en producción")
+
+print(f"\n📊 RESUMEN FINAL (Threshold Óptimo = {best_threshold:.3f}):")
+print(f"   Validation - Recall: {val_recall_opt:.4f}, F1: {val_f1_opt:.4f}, AUC: {val_auc:.4f}")
+print(f"   Test       - Recall: {test_recall_opt:.4f}, F1: {test_f1_opt:.4f}, AUC: {test_auc:.4f}")
+
+print(f"\n✅ Modelo listo para usar en producción")
+print(f"✅ Threshold óptimo recomendado: {best_threshold:.3f}")
 print("="*80)
 
