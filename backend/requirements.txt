@@ -1,2 +1,4 @@
 # Backend requirements
 # API Framework
+fastapi==0.121.1
+uvicorn==0.38.0
