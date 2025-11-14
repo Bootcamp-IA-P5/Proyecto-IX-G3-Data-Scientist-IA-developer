@@ -39,35 +39,107 @@ print(f"📊 Optuna version: {optuna.__version__}")
 print(f"🔢 Scikit-learn version: {__import__('sklearn').__version__}")
 
 # ============================================================================
+# CONFIGURACIÓN: USAR SMOTE O NO
+# ============================================================================
+USE_SMOTE = False  # Cambiar a True para usar SMOTE, False para solo class_weight
+
+print("\n" + "="*80)
+print("⚙️ CONFIGURACIÓN DE ENTRENAMIENTO")
+print("="*80)
+if USE_SMOTE:
+    print("✅ Usando SMOTE + class_weight='balanced'")
+else:
+    print("✅ Usando SOLO class_weight='balanced' (SIN SMOTE)")
+
+# ============================================================================
 # CARGA DE DATOS
 # ============================================================================
 print("\n" + "="*80)
 print("📂 CARGA DE DATOS")
 print("="*80)
 
+# Cargar datos base (val y test siempre son los mismos)
+data_path = '../backend/data'
 try:
-    with open('../data/X_train_balanced.pkl', 'rb') as f:
-        X_train_balanced = pickle.load(f)
-    with open('../data/y_train_balanced.pkl', 'rb') as f:
-        y_train_balanced = pickle.load(f)
-    with open('../data/X_val_scaled.pkl', 'rb') as f:
+    with open(f'{data_path}/X_val_scaled.pkl', 'rb') as f:
         X_val_scaled = pickle.load(f)
-    with open('../data/y_val.pkl', 'rb') as f:
+    with open(f'{data_path}/y_val.pkl', 'rb') as f:
         y_val = pickle.load(f)
-    with open('../data/X_test_scaled.pkl', 'rb') as f:
+    with open(f'{data_path}/X_test_scaled.pkl', 'rb') as f:
         X_test_scaled = pickle.load(f)
-    with open('../data/y_test.pkl', 'rb') as f:
+    with open(f'{data_path}/y_test.pkl', 'rb') as f:
         y_test = pickle.load(f)
-    print("✅ Datos cargados desde archivos pickle")
+    with open(f'{data_path}/scaler.pkl', 'rb') as f:
+        scaler = pickle.load(f)
+    print("✅ Datos de validación y test cargados")
 except FileNotFoundError as e:
-    print(f"❌ Error: {e}")
+    print(f"❌ Error cargando datos: {e}")
     sys.exit(1)
 
+# Cargar datos de train según configuración
+if USE_SMOTE:
+    # Usar datos balanceados con SMOTE
+    try:
+        with open(f'{data_path}/X_train_balanced.pkl', 'rb') as f:
+            X_train = pickle.load(f)
+        with open(f'{data_path}/y_train_balanced.pkl', 'rb') as f:
+            y_train = pickle.load(f)
+        print("✅ Datos de train balanceados (SMOTE) cargados")
+    except FileNotFoundError as e:
+        print(f"❌ Error: {e}")
+        sys.exit(1)
+else:
+    # Usar datos originales sin SMOTE - necesitamos generarlos
+    print("⚠️  Generando datos originales del train (sin SMOTE)...")
+    try:
+        # Intentar cargar datos originales si existen
+        with open(f'{data_path}/X_train_scaled.pkl', 'rb') as f:
+            X_train = pickle.load(f)
+        with open(f'{data_path}/y_train.pkl', 'rb') as f:
+            y_train = pickle.load(f)
+        print("✅ Datos originales del train cargados")
+    except FileNotFoundError:
+        # Si no existen, intentar extraerlos de los datos balanceados
+        # Sabemos que el train original tiene 2,988 muestras (60% de 4,981)
+        print("   Datos originales no encontrados. Extrayendo del train balanceado...")
+        print("   ⚠️  NOTA: Esto asume que las primeras 2,988 muestras son las originales")
+        print("   (SMOTE agrega muestras al final, así que esto debería funcionar)")
+        
+        # Cargar datos balanceados temporalmente
+        with open(f'{data_path}/X_train_balanced.pkl', 'rb') as f:
+            X_train_balanced_temp = pickle.load(f)
+        with open(f'{data_path}/y_train_balanced.pkl', 'rb') as f:
+            y_train_balanced_temp = pickle.load(f)
+        
+        # El train original tiene 2,988 muestras (según preprocesamiento)
+        # SMOTE agrega muestras sintéticas, así que las primeras 2,988 deberían ser originales
+        original_train_size = 2988
+        
+        if len(X_train_balanced_temp) >= original_train_size:
+            # Tomar las primeras N muestras (asumiendo que SMOTE agregó al final)
+            X_train = X_train_balanced_temp.iloc[:original_train_size].copy()
+            y_train = y_train_balanced_temp.iloc[:original_train_size].copy()
+            print(f"   ✅ Extraídas {len(X_train):,} muestras originales del train balanceado")
+        else:
+            print("   ❌ Error: No se pueden extraer los datos originales")
+            sys.exit(1)
+        
+        # Guardar para futuros usos
+        with open(f'{data_path}/X_train_scaled.pkl', 'wb') as f:
+            pickle.dump(X_train, f)
+        with open(f'{data_path}/y_train.pkl', 'wb') as f:
+            pickle.dump(y_train, f)
+        print("   ✅ Datos originales guardados para futuros usos")
+
 print("\n📊 RESUMEN DE DATOS:")
-print(f"   Train: {X_train_balanced.shape[0]:,} muestras, {X_train_balanced.shape[1]} features")
+print(f"   Train: {X_train.shape[0]:,} muestras, {X_train.shape[1]} features")
 print(f"   Validation: {X_val_scaled.shape[0]:,} muestras, {X_val_scaled.shape[1]} features")
 print(f"   Test: {X_test_scaled.shape[0]:,} muestras, {X_test_scaled.shape[1]} features")
-print(f"\n   Train balanceado - Stroke 0: {(y_train_balanced == 0).sum():,}, Stroke 1: {(y_train_balanced == 1).sum():,}")
+if USE_SMOTE:
+    print(f"\n   Train (SMOTE) - Stroke 0: {(y_train == 0).sum():,}, Stroke 1: {(y_train == 1).sum():,}")
+else:
+    print(f"\n   Train (ORIGINAL) - Stroke 0: {(y_train == 0).sum():,}, Stroke 1: {(y_train == 1).sum():,}")
+    print(f"   Ratio desbalanceo: {(y_train == 0).sum() / (y_train == 1).sum():.2f}:1")
 print(f"   Validation original - Stroke 0: {(y_val == 0).sum():,}, Stroke 1: {(y_val == 1).sum():,}")
 print(f"   Test original - Stroke 0: {(y_test == 0).sum():,}, Stroke 1: {(y_test == 1).sum():,}")
 
@@ -119,8 +191,8 @@ def objective(trial):
     # K-Folds Cross-Validation con F1-Score
     cv_scores = cross_val_score(
         model, 
-        X_train_balanced, 
-        y_train_balanced,
+        X_train, 
+        y_train,
         cv=skf,
         scoring='f1',
         n_jobs=-1
@@ -138,7 +210,7 @@ print("   Optimizando: n_estimators, max_depth, min_samples_split, min_samples_l
 print("\n" + "="*80)
 print("🚀 OPTIMIZACIÓN CON OPTUNA")
 print("="*80)
-print(f"📊 Datos: {X_train_balanced.shape[0]:,} muestras, {X_train_balanced.shape[1]} features")
+print(f"📊 Datos: {X_train.shape[0]:,} muestras, {X_train.shape[1]} features")
 print(f"🔄 K-Folds: {N_FOLDS}")
 print(f"⏱️  Esto puede tomar varios minutos...\n")
 
@@ -179,7 +251,7 @@ print(f"📋 Parámetros: {best_params}\n")
 
 # Crear y entrenar modelo
 rf_model = RandomForestClassifier(**best_params)
-rf_model.fit(X_train_balanced, y_train_balanced)
+rf_model.fit(X_train, y_train)
 
 print("✅ Modelo entrenado correctamente")
 print(f"   • Número de árboles: {rf_model.n_estimators}")
@@ -411,14 +483,14 @@ axes[1].legend(fontsize=11)
 axes[1].grid(True, alpha=0.3)
 
 plt.tight_layout()
-os.makedirs('../', exist_ok=True)
-plt.savefig('../random_forest_curves.png', dpi=300, bbox_inches='tight')
+os.makedirs('../backend', exist_ok=True)
+plt.savefig('../backend/random_forest_curves_no_smote.png', dpi=300, bbox_inches='tight')
 plt.close()
-print("✅ Curvas guardadas: backend/random_forest_curves.png")
+print(" Curvas guardadas: backend/random_forest_curves_no_smote.png")
 
 # Importancia de Features
 feature_importance = pd.DataFrame({
-    'feature': X_train_balanced.columns,
+    'feature': X_train.columns,
     'importance': rf_model.feature_importances_
 }).sort_values('importance', ascending=False)
 
@@ -436,9 +508,9 @@ plt.xlabel('Importancia', fontsize=12)
 plt.title('Top 15 Features más Importantes - Random Forest', fontsize=14, fontweight='bold')
 plt.gca().invert_yaxis()
 plt.tight_layout()
-plt.savefig('../feature_importance_rf.png', dpi=300, bbox_inches='tight')
+plt.savefig('../backend/feature_importance_rf_no_smote.png', dpi=300, bbox_inches='tight')
 plt.close()
-print("\n✅ Visualización guardada: backend/feature_importance_rf.png")
+print("\n✅ Visualización guardada: backend/feature_importance_rf_no_smote.png")
 
 # ============================================================================
 # GUARDAR MODELO
@@ -449,17 +521,18 @@ print("="*80)
 
 import joblib
 
-# Crear carpeta models si no existe
-os.makedirs('../models', exist_ok=True)
-
-# Guardar modelo
-joblib.dump(rf_model, '../models/random_forest_model.pkl')
-print("✅ Modelo guardado: models/random_forest_model.pkl")
+# Guardar modelo con nombre según configuración
+models_path = '../models'
+os.makedirs(models_path, exist_ok=True)
+model_name = 'random_forest_model_no_smote.pkl' if not USE_SMOTE else 'random_forest_model.pkl'
+joblib.dump(rf_model, f'{models_path}/{model_name}')
+print(f"✅ Modelo guardado: models/{model_name}")
 
 # Guardar mejores parámetros
-with open('../models/rf_best_params.pkl', 'wb') as f:
+params_name = 'rf_best_params_no_smote.pkl' if not USE_SMOTE else 'rf_best_params.pkl'
+with open(f'{models_path}/{params_name}', 'wb') as f:
     pickle.dump(best_params, f)
-print("✅ Mejores parámetros guardados: models/rf_best_params.pkl")
+print(f"✅ Mejores parámetros guardados: models/{params_name}")
 
 # Guardar resultados de evaluación
 results = {
@@ -474,6 +547,8 @@ results = {
         'accuracy': test_accuracy,
         'precision': test_precision,
         'recall': test_recall,
+        !!
+        
         'f1_score': test_f1,
         'auc_roc': test_auc
     },
@@ -495,12 +570,14 @@ results = {
     },
     'best_params': best_params,
     'optimal_threshold': float(best_threshold),
+    'use_smote': USE_SMOTE,
     'feature_importance': feature_importance.to_dict('records')
 }
 
-with open('../models/rf_results.pkl', 'wb') as f:
+results_name = 'rf_results_no_smote.pkl' if not USE_SMOTE else 'rf_results.pkl'
+with open(f'{models_path}/{results_name}', 'wb') as f:
     pickle.dump(results, f)
-print("✅ Resultados guardados: models/rf_results.pkl")
+print(f"✅ Resultados guardados: models/{results_name}")
 
 print("\n" + "="*80)
 print("🎉 ENTRENAMIENTO COMPLETADO")
@@ -515,5 +592,6 @@ print(f"   Test       - Recall: {test_recall_opt:.4f}, F1: {test_f1_opt:.4f}, AU
 
 print(f"\n✅ Modelo listo para usar en producción")
 print(f"✅ Threshold óptimo recomendado: {best_threshold:.3f}")
+print(f"✅ Configuración: {'SMOTE + class_weight' if USE_SMOTE else 'SOLO class_weight (sin SMOTE)'}")
 print("="*80)
 
