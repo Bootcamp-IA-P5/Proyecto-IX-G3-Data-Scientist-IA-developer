@@ -3,14 +3,15 @@ FROM python:3.11-slim as builder
 
 WORKDIR /app
 COPY ../requirements.txt .
-RUN pip install --user -r requirements.txt
+# Builder stage
+RUN pip install -r requirements.txt
 
 # Stage final
 FROM python:3.11-slim
 
 # Instalar solo las dependencias de runtime
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
+# Stage corregido
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
 WORKDIR /app
 
