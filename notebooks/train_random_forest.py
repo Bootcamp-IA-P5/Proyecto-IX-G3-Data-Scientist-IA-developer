@@ -55,22 +55,39 @@ print("\n" + "="*80)
 print("📂 CARGA DE DATOS")
 print("="*80)
 
+# Intentar cargar desde backend/data primero, luego desde data/
+data_paths = ['../backend/data', '../data']
+data_path = None
+
+for path in data_paths:
+    test_file = f'{path}/X_train_balanced.pkl'
+    if os.path.exists(test_file):
+        data_path = path
+        break
+
+if data_path is None:
+    print("❌ Error: No se encontró la carpeta de datos preprocesados")
+    print("   Buscado en: ../backend/data y ../data")
+    print("   Por favor, ejecuta primero el notebook stroke_preprocessing.ipynb")
+    sys.exit(1)
+
 try:
-    with open('../data/X_train_balanced.pkl', 'rb') as f:
+    with open(f'{data_path}/X_train_balanced.pkl', 'rb') as f:
         X_train_balanced = pickle.load(f)
-    with open('../data/y_train_balanced.pkl', 'rb') as f:
+    with open(f'{data_path}/y_train_balanced.pkl', 'rb') as f:
         y_train_balanced = pickle.load(f)
-    with open('../data/X_val_scaled.pkl', 'rb') as f:
+    with open(f'{data_path}/X_val_scaled.pkl', 'rb') as f:
         X_val_scaled = pickle.load(f)
-    with open('../data/y_val.pkl', 'rb') as f:
+    with open(f'{data_path}/y_val.pkl', 'rb') as f:
         y_val = pickle.load(f)
-    with open('../data/X_test_scaled.pkl', 'rb') as f:
+    with open(f'{data_path}/X_test_scaled.pkl', 'rb') as f:
         X_test_scaled = pickle.load(f)
-    with open('../data/y_test.pkl', 'rb') as f:
+    with open(f'{data_path}/y_test.pkl', 'rb') as f:
         y_test = pickle.load(f)
-    print("✅ Datos cargados desde archivos pickle")
+    print(f"✅ Datos cargados desde: {data_path}")
 except FileNotFoundError as e:
     print(f"❌ Error: {e}")
+    print("   Por favor, ejecuta primero el notebook stroke_preprocessing.ipynb para generar los datos")
     sys.exit(1)
 
 print("\n📊 RESUMEN DE DATOS:")
@@ -178,6 +195,13 @@ with mlflow.start_run():
     print("\n" + "="*80)
     print("📊 MLFLOW: Run iniciado")
     print("="*80)
+    
+    # Añadir tags útiles para identificar el run
+    mlflow.set_tag("model_type", "RandomForest")
+    mlflow.set_tag("use_smote", "False")
+    mlflow.set_tag("dataset", "stroke_dataset")
+    mlflow.set_tag("task", "binary_classification")
+    mlflow.set_tag("target", "stroke_prediction")
 
     # ============================================================================
     # ENTRENAR MODELO FINAL
@@ -443,9 +467,14 @@ with mlflow.start_run():
 
     plt.tight_layout()
     os.makedirs('../', exist_ok=True)
-    plt.savefig('../random_forest_curves.png', dpi=300, bbox_inches='tight')
+    curves_path = '../random_forest_curves.png'
+    plt.savefig(curves_path, dpi=300, bbox_inches='tight')
     plt.close()
     print("✅ Curvas guardadas: backend/random_forest_curves.png")
+    
+    # Guardar gráfico como artifact en MLflow
+    mlflow.log_artifact(curves_path, "plots")
+    print("✅ Curvas guardadas en MLflow como artifact")
 
     # Importancia de Features
     feature_importance = pd.DataFrame({
@@ -467,9 +496,20 @@ with mlflow.start_run():
     plt.title('Top 15 Features más Importantes - Random Forest', fontsize=14, fontweight='bold')
     plt.gca().invert_yaxis()
     plt.tight_layout()
-    plt.savefig('../feature_importance_rf.png', dpi=300, bbox_inches='tight')
+    feature_importance_path = '../feature_importance_rf.png'
+    plt.savefig(feature_importance_path, dpi=300, bbox_inches='tight')
     plt.close()
     print("\n✅ Visualización guardada: backend/feature_importance_rf.png")
+    
+    # Guardar gráfico de feature importance como artifact en MLflow
+    mlflow.log_artifact(feature_importance_path, "plots")
+    print("✅ Feature importance guardada en MLflow como artifact")
+    
+    # Guardar feature importance como CSV para análisis
+    feature_importance_csv = '../feature_importance.csv'
+    feature_importance.to_csv(feature_importance_csv, index=False)
+    mlflow.log_artifact(feature_importance_csv, "data")
+    print("✅ Feature importance CSV guardada en MLflow")
 
     # ============================================================================
     # GUARDAR MODELO
@@ -483,9 +523,17 @@ with mlflow.start_run():
     # Crear carpeta models si no existe
     os.makedirs('../models', exist_ok=True)
 
-    # Guardar modelo
+    # Guardar modelo en pickle (para producción)
     joblib.dump(rf_model, '../models/random_forest_model.pkl')
     print("✅ Modelo guardado: models/random_forest_model.pkl")
+    
+    # Guardar modelo en MLflow (para tracking y versionado)
+    mlflow.sklearn.log_model(
+        rf_model,
+        "model",
+        registered_model_name="RandomForest_Stroke_Prediction"
+    )
+    print("✅ Modelo guardado en MLflow")
 
     # Guardar mejores parámetros
     with open('../models/rf_best_params.pkl', 'wb') as f:
