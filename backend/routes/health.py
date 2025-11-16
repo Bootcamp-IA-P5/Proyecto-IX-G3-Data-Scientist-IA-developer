@@ -21,7 +21,7 @@ async def health_check() -> HealthResponse:
     return health_controller.get_health()
 
 
-@router.get("/api/status", response_model=StatusResponse)
+@router.get("/status", response_model=StatusResponse)
 async def get_status() -> StatusResponse:
     """
     Get system and model status

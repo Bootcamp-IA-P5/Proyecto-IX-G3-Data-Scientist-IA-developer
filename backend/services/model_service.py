@@ -83,11 +83,54 @@ class ModelService:
         if not self.models_path.exists():
             return []
         
-        # Find all .pkl files that are models (not params or results)
-        model_files = [
-            f.name for f in self.models_path.glob("*.pkl")
-            if "model" in f.name.lower() and "params" not in f.name.lower() and "results" not in f.name.lower()
-        ]
+        # Exclude patterns (files that are NOT models)
+        exclude_patterns = ["params", "results", "scaler", "best_params", "_results", "_scaler"]
+        
+        # Find all .pkl files that are models
+        model_files = []
+        for f in self.models_path.glob("*.pkl"):
+            name_lower = f.name.lower()
+            # Skip if contains exclude patterns
+            if any(pattern in name_lower for pattern in exclude_patterns):
+                continue
+            
+            # Include if:
+            # 1. Contains "model" in name, OR
+            # 2. Starts with "rf_" and is not params/results (Random Forest), OR
+            # 3. Starts with "random_forest", OR
+            # 4. Matches common model naming patterns
+            if ("model" in name_lower or 
+                (name_lower.startswith("rf_") and not any(ex in name_lower for ex in exclude_patterns)) or
+                name_lower.startswith("random_forest")):
+                model_files.append(f.name)
+        
+        # Check if Random Forest model exists with different names
+        rf_model_names = ["random_forest_model.pkl", "rf_model.pkl"]
+        for rf_name in rf_model_names:
+            if (self.models_path / rf_name).exists() and rf_name not in model_files:
+                model_files.append(rf_name)
+        
+        # If we have rf_best_params or rf_results but no model file,
+        # it means RF was trained but model file might be missing
+        # Check for RF indicators
+        has_rf_params = (self.models_path / "rf_best_params.pkl").exists()
+        has_rf_results = (self.models_path / "rf_results.pkl").exists()
+        
+        # If RF params/results exist but no model file, add expected name
+        if (has_rf_params or has_rf_results) and not any("random_forest" in m.lower() or m.startswith("rf_") for m in model_files):
+            # Try to find if model exists with any name
+            rf_model_found = False
+            for f in self.models_path.glob("*.pkl"):
+                if "rf" in f.name.lower() and not any(ex in f.name.lower() for ex in exclude_patterns):
+                    if f.name not in model_files:
+                        model_files.append(f.name)
+                        rf_model_found = True
+                        break
+            
+            # If still not found, add expected name (even if file doesn't exist)
+            # This helps identify that RF should be available
+            if not rf_model_found:
+                model_files.append("random_forest_model.pkl")
         
         return sorted(model_files)
 
