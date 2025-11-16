@@ -4,6 +4,7 @@ Prediction controller
 Handles prediction logic and coordinates with model service.
 """
 from typing import List, Optional
+import numpy as np
 from backend.schemas import (
     PredictionRequest,
     PredictionResponse,
@@ -11,6 +12,7 @@ from backend.schemas import (
     BatchPredictionResponse
 )
 from backend.services.model_service import model_service
+from backend.services.preprocessing_service import preprocessing_service
 
 
 class PredictController:
@@ -49,13 +51,38 @@ class PredictController:
         Raises:
             ValueError: If model is not found or prediction fails
         """
-        # TODO: Implement actual prediction logic in Step 5
-        # For now, return placeholder
+        # Determine which model to use
+        final_model_name = model_name or request.model_name or "logistic_regression_model.pkl"
+        
+        # Load model
+        model = model_service.load_model(final_model_name)
+        if model is None:
+            raise ValueError(f"Model '{final_model_name}' not found. Available models: {model_service.get_available_models()}")
+        
+        # Convert request to dict for preprocessing
+        input_data = request.dict(exclude={'model_name'})
+        
+        # Preprocess input data
+        try:
+            X_preprocessed = preprocessing_service.preprocess(input_data)
+        except Exception as e:
+            raise ValueError(f"Error preprocessing input data: {str(e)}")
+        
+        # Make prediction
+        try:
+            probability = model.predict_proba(X_preprocessed)[0][1]  # Probability of class 1 (stroke)
+            prediction = 1 if probability >= 0.5 else 0
+        except Exception as e:
+            raise ValueError(f"Error making prediction: {str(e)}")
+        
+        # Calculate confidence
+        confidence = PredictController._calculate_confidence(probability)
+        
         return PredictionResponse(
-            prediction=0,
-            probability=0.5,
-            model_used=model_name or "default",
-            confidence="Medium"
+            prediction=int(prediction),
+            probability=float(probability),
+            model_used=final_model_name,
+            confidence=confidence
         )
     
     @staticmethod
@@ -72,16 +99,45 @@ class PredictController:
         Raises:
             ValueError: If model is not found or prediction fails
         """
-        # TODO: Implement actual batch prediction logic in Step 5
+        # Determine which model to use
+        final_model_name = request.model_name or "logistic_regression_model.pkl"
+        
+        # Load model
+        model = model_service.load_model(final_model_name)
+        if model is None:
+            raise ValueError(f"Model '{final_model_name}' not found. Available models: {model_service.get_available_models()}")
+        
+        # Convert requests to list of dicts for preprocessing
+        input_data_list = [item.dict(exclude={'model_name'}) for item in request.data]
+        
+        # Preprocess batch input data
+        try:
+            X_preprocessed = preprocessing_service.preprocess_batch(input_data_list)
+        except Exception as e:
+            raise ValueError(f"Error preprocessing batch input data: {str(e)}")
+        
+        # Make batch predictions
+        try:
+            probabilities = model.predict_proba(X_preprocessed)[:, 1]  # Probabilities of class 1 (stroke)
+            predictions_binary = (probabilities >= 0.5).astype(int)
+        except Exception as e:
+            raise ValueError(f"Error making batch predictions: {str(e)}")
+        
+        # Build response list
         predictions = [
-            PredictController.predict_single(item, request.model_name)
-            for item in request.data
+            PredictionResponse(
+                prediction=int(pred),
+                probability=float(prob),
+                model_used=final_model_name,
+                confidence=PredictController._calculate_confidence(prob)
+            )
+            for pred, prob in zip(predictions_binary, probabilities)
         ]
         
         return BatchPredictionResponse(
             predictions=predictions,
             total=len(predictions),
-            model_used=request.model_name or "default"
+            model_used=final_model_name
         )
 
 
