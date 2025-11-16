@@ -60,5 +60,11 @@ Temporary Items
 *.swo
 *~
 
-# MLflow tracking
+# MLflow tracking (cubre mlruns/ en cualquier ubicación)
 mlruns/
+**/mlruns/
+notebooks/mlruns/
+
+# Archivos de datos procesados (si no deben ir al repositorio)
+data/processed/
+backend/data/
