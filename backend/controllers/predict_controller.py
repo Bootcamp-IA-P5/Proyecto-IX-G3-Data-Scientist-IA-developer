@@ -4,7 +4,7 @@ Prediction controller
 Handles prediction logic and coordinates with model service.
 """
 from typing import List, Optional
-from backend.models import (
+from backend.schemas import (
     PredictionRequest,
     PredictionResponse,
     BatchPredictionRequest,

@@ -4,7 +4,7 @@ Health controller
 Handles health check and system status logic.
 """
 from typing import Dict, Any
-from backend.models import HealthResponse, StatusResponse
+from backend.schemas import HealthResponse, StatusResponse
 from backend.services.model_service import model_service
 
 

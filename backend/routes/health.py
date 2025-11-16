@@ -5,7 +5,7 @@ Routes only define HTTP endpoints and call controllers for business logic.
 """
 from fastapi import APIRouter
 from backend.controllers.health_controller import health_controller
-from backend.models import HealthResponse, StatusResponse
+from backend.schemas import HealthResponse, StatusResponse
 
 router = APIRouter()
 

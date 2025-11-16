@@ -6,7 +6,7 @@ Routes only define HTTP endpoints and call controllers for business logic.
 from typing import Optional
 from fastapi import APIRouter, Query
 from backend.controllers.predict_controller import predict_controller
-from backend.models import (
+from backend.schemas import (
     PredictionRequest,
     PredictionResponse,
     BatchPredictionRequest,
