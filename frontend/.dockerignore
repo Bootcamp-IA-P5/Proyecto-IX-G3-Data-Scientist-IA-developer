@@ -1,0 +1,41 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Backend code (not needed in frontend)
+../backend/
+
+# Models (not needed in frontend)
+../models/
+
+# Notebooks
+../notebooks/
+
+# Source code
+../src/
+
+# Documentation
+*.md
+docs/
+
+# Logs
+*.log

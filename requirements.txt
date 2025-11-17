@@ -1,3 +1,4 @@
+# ML dependencies
 numpy
 pandas
 matplotlib
@@ -8,3 +9,12 @@ joblib
 imbalanced-learn
 xgboost
 mlflow
+
+# FastAPI backend
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# React frontend (para desarrollo)
+requests==2.31.0
+
