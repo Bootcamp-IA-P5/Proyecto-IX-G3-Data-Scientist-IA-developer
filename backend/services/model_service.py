@@ -1,6 +1,12 @@
 """
 Service layer for ML model operations.
-
+"""
+import os
+import joblib
+import logging
+from typing import Dict, Any
+import numpy as np
+"""
 This module handles:
 - Loading and caching the trained model
 - Making predictions
