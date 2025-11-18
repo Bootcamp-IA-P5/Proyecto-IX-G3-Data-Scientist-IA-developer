@@ -18,6 +18,10 @@ COPY models/ models/
 # Copia los datos de preprocesamiento
 COPY data/ data/
 
+# Copia /tests
+COPY tests/ tests/
+
+
 # Montar modelos como volumen
 VOLUME ["/app/models"]
 
