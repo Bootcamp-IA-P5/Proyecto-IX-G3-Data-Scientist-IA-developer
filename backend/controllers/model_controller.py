@@ -38,6 +38,7 @@ class ModelController:
     def _load_model_params(model_name: str) -> Optional[Dict[str, Any]]:
         """
         Load model parameters from best_params file
+        Searches in both models/ and data/ directories
         
         Args:
             model_name: Name of the model file
@@ -46,6 +47,7 @@ class ModelController:
             Dictionary with parameters or None
         """
         models_path = model_service.models_path
+        data_path = model_service.data_path
         
         # Try different naming patterns
         base_name = model_name.replace("_model.pkl", "").replace(".pkl", "")
@@ -56,16 +58,20 @@ class ModelController:
             "logistic_regression_best_params.pkl" if "logistic" in model_name.lower() else None,
         ]
         
+        # Search in both directories
+        search_paths = [models_path, data_path]
+        
         for param_file in param_files:
             if param_file is None:
                 continue
-            param_path = models_path / param_file
-            if param_path.exists():
-                try:
-                    with open(param_path, 'rb') as f:
-                        return pickle.load(f)
-                except Exception:
-                    continue
+            for search_path in search_paths:
+                param_path = search_path / param_file
+                if param_path.exists():
+                    try:
+                        with open(param_path, 'rb') as f:
+                            return pickle.load(f)
+                    except Exception:
+                        continue
         
         return None
     
@@ -73,6 +79,7 @@ class ModelController:
     def _load_model_results(model_name: str) -> Optional[Dict[str, Any]]:
         """
         Load model results/metrics from results file
+        Searches in both models/ and data/ directories
         
         Args:
             model_name: Name of the model file
@@ -81,26 +88,31 @@ class ModelController:
             Dictionary with results/metrics or None
         """
         models_path = model_service.models_path
+        data_path = model_service.data_path
         
         # Try different naming patterns
         base_name = model_name.replace("_model.pkl", "").replace(".pkl", "")
         result_files = [
             f"{base_name}_results.pkl",
-            f"{base_name}_results.pkl",
             "rf_results.pkl" if "random_forest" in model_name.lower() else None,
             "logistic_regression_results.pkl" if "logistic" in model_name.lower() else None,
+            "xgboost_results_no_smote.pkl" if "xgboost" in model_name.lower() else None,
         ]
+        
+        # Search in both directories
+        search_paths = [models_path, data_path]
         
         for result_file in result_files:
             if result_file is None:
                 continue
-            result_path = models_path / result_file
-            if result_path.exists():
-                try:
-                    with open(result_path, 'rb') as f:
-                        return pickle.load(f)
-                except Exception:
-                    continue
+            for search_path in search_paths:
+                result_path = search_path / result_file
+                if result_path.exists():
+                    try:
+                        with open(result_path, 'rb') as f:
+                            return pickle.load(f)
+                    except Exception:
+                        continue
         
         return None
     
@@ -108,6 +120,10 @@ class ModelController:
     def _extract_metrics_from_results(results: Dict[str, Any]) -> Optional[Dict[str, float]]:
         """
         Extract metrics from results dictionary
+        Handles different structures from different models:
+        - Logistic Regression: performance_metrics_threshold_0.5
+        - Random Forest: test_threshold_0.5 or validation_threshold_0.5
+        - XGBoost: test_threshold_optimal or validation_threshold_optimal
         
         Args:
             results: Results dictionary from pickle file
@@ -120,24 +136,78 @@ class ModelController:
         
         metrics = {}
         
-        # Try to find test metrics (preferred) or validation metrics
-        if "test_threshold_0.5" in results:
+        # Priority order: test > validation, optimal > 0.5, performance_metrics
+        # Helper function to convert numpy types
+        def to_float(value):
+            """Convert value to float, handling numpy types"""
+            import numpy as np
+            if value is None:
+                return 0.0
+            if isinstance(value, (np.integer, np.int64, np.int32)):
+                return float(int(value))
+            if isinstance(value, (np.floating, np.float64, np.float32)):
+                return float(value)
+            return float(value) if value is not None else 0.0
+        
+        # 1. Test metrics with optimal threshold (XGBoost)
+        if "test_threshold_optimal" in results:
+            test_metrics = results["test_threshold_optimal"]
+            metrics = {
+                "accuracy": to_float(test_metrics.get("accuracy", 0.0)),
+                "precision": to_float(test_metrics.get("precision", 0.0)),
+                "recall": to_float(test_metrics.get("recall", 0.0)),
+                "f1_score": to_float(test_metrics.get("f1_score", 0.0)),
+                "auc_roc": to_float(test_metrics.get("auc_roc", 0.0)),
+            }
+        # 2. Test metrics with 0.5 threshold (Random Forest)
+        elif "test_threshold_0.5" in results:
             test_metrics = results["test_threshold_0.5"]
             metrics = {
-                "accuracy": test_metrics.get("accuracy", 0.0),
-                "precision": test_metrics.get("precision", 0.0),
-                "recall": test_metrics.get("recall", 0.0),
-                "f1_score": test_metrics.get("f1_score", 0.0),
-                "auc_roc": test_metrics.get("auc_roc", 0.0),
+                "accuracy": to_float(test_metrics.get("accuracy", 0.0)),
+                "precision": to_float(test_metrics.get("precision", 0.0)),
+                "recall": to_float(test_metrics.get("recall", 0.0)),
+                "f1_score": to_float(test_metrics.get("f1_score", 0.0)),
+                "auc_roc": to_float(test_metrics.get("auc_roc", 0.0)),
             }
+        # 3. Performance metrics with 0.5 threshold (Logistic Regression)
+        elif "performance_metrics_threshold_0.5" in results:
+            perf_metrics = results["performance_metrics_threshold_0.5"]
+            metrics = {
+                "accuracy": to_float(perf_metrics.get("accuracy", 0.0)),
+                "precision": to_float(perf_metrics.get("precision", 0.0)),
+                "recall": to_float(perf_metrics.get("recall", 0.0)),
+                "f1_score": to_float(perf_metrics.get("f1_score", 0.0)),
+                "auc_roc": to_float(perf_metrics.get("auc_roc", 0.0)),
+            }
+        # 4. Validation metrics with optimal threshold (XGBoost fallback)
+        elif "validation_threshold_optimal" in results:
+            val_metrics = results["validation_threshold_optimal"]
+            metrics = {
+                "accuracy": to_float(val_metrics.get("accuracy", 0.0)),
+                "precision": to_float(val_metrics.get("precision", 0.0)),
+                "recall": to_float(val_metrics.get("recall", 0.0)),
+                "f1_score": to_float(val_metrics.get("f1_score", 0.0)),
+                "auc_roc": to_float(val_metrics.get("auc_roc", 0.0)),
+            }
+        # 5. Validation metrics with 0.5 threshold (Random Forest fallback)
         elif "validation_threshold_0.5" in results:
             val_metrics = results["validation_threshold_0.5"]
             metrics = {
-                "accuracy": val_metrics.get("accuracy", 0.0),
-                "precision": val_metrics.get("precision", 0.0),
-                "recall": val_metrics.get("recall", 0.0),
-                "f1_score": val_metrics.get("f1_score", 0.0),
-                "auc_roc": val_metrics.get("auc_roc", 0.0),
+                "accuracy": to_float(val_metrics.get("accuracy", 0.0)),
+                "precision": to_float(val_metrics.get("precision", 0.0)),
+                "recall": to_float(val_metrics.get("recall", 0.0)),
+                "f1_score": to_float(val_metrics.get("f1_score", 0.0)),
+                "auc_roc": to_float(val_metrics.get("auc_roc", 0.0)),
+            }
+        # 6. Performance metrics with optimal threshold (Logistic Regression fallback)
+        elif "performance_metrics_threshold_optimal" in results:
+            perf_metrics = results["performance_metrics_threshold_optimal"]
+            metrics = {
+                "accuracy": to_float(perf_metrics.get("accuracy", 0.0)),
+                "precision": to_float(perf_metrics.get("precision", 0.0)),
+                "recall": to_float(perf_metrics.get("recall", 0.0)),
+                "f1_score": to_float(perf_metrics.get("f1_score", 0.0)),
+                "auc_roc": to_float(perf_metrics.get("auc_roc", 0.0)),
             }
         
         return metrics if metrics else None
@@ -196,6 +266,43 @@ class ModelController:
                 features_required = preprocessing_service.expected_columns
         except:
             pass
+        
+        # Convert numpy types to native Python types for JSON serialization
+        def convert_to_native(value):
+            """Convert numpy types and other non-serializable types to native Python types"""
+            import numpy as np
+            if value is None:
+                return None
+            if isinstance(value, (np.integer, np.int64, np.int32, np.int8, np.int16)):
+                return int(value)
+            elif isinstance(value, (np.floating, np.float64, np.float32, np.float16)):
+                return float(value)
+            elif isinstance(value, (np.bool_, bool)):
+                return bool(value)
+            elif isinstance(value, (int, float, str, bool)):
+                return value
+            elif isinstance(value, (list, tuple)):
+                return [convert_to_native(item) for item in value]
+            elif isinstance(value, dict):
+                return {str(k): convert_to_native(v) for k, v in value.items()}
+            else:
+                try:
+                    # Try to convert to string as last resort
+                    return str(value)
+                except:
+                    return None
+        
+        if hyperparameters:
+            hyperparameters = {
+                str(k): convert_to_native(v)
+                for k, v in hyperparameters.items()
+            }
+        
+        if metrics:
+            metrics = {
+                str(k): convert_to_native(v)
+                for k, v in metrics.items()
+            }
         
         return ModelInfoResponse(
             model_name=model_name,
