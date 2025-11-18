@@ -294,12 +294,22 @@ class ModelController:
                         ]
             
             # Extract confusion matrix
+            # Try direct keys first
             if "test_confusion_matrix" in results:
                 confusion_matrix = results["test_confusion_matrix"]
             elif "confusion_matrix" in results:
                 confusion_matrix = results["confusion_matrix"]
             elif "validation_confusion_matrix" in results:
                 confusion_matrix = results["validation_confusion_matrix"]
+            else:
+                # Try to find in nested metrics (e.g., performance_metrics_threshold_0.5, test_threshold_0.5)
+                for key in ["test_threshold_optimal", "test_threshold_0.5", 
+                           "validation_threshold_optimal", "validation_threshold_0.5",
+                           "performance_metrics_threshold_0.5", "performance_metrics_threshold_optimal"]:
+                    if key in results and isinstance(results[key], dict):
+                        if "confusion_matrix" in results[key]:
+                            confusion_matrix = results[key]["confusion_matrix"]
+                            break
             
             # Extract optimal threshold
             if "optimal_threshold" in results:
