@@ -18,6 +18,20 @@ class ConfusionMatrixInfo(BaseModel):
     error_rate: float  # (FP + FN) / Total
 
 
+class ROCCurve(BaseModel):
+    """ROC curve data"""
+    fpr: List[float]  # False Positive Rate
+    tpr: List[float]  # True Positive Rate
+    auc: Optional[float] = None  # Area Under Curve
+
+
+class PrecisionRecallCurve(BaseModel):
+    """Precision-Recall curve data"""
+    precision: List[float]
+    recall: List[float]
+    f1: Optional[float] = None  # F1 score at optimal threshold
+
+
 class ModelInfoResponse(BaseModel):
     """Response model for model information"""
     model_name: str
@@ -30,6 +44,8 @@ class ModelInfoResponse(BaseModel):
     confusion_matrix: Optional[List[List[int]]] = None  # Deprecated: use confusion_matrix_info
     confusion_matrix_info: Optional[ConfusionMatrixInfo] = None
     optimal_threshold: Optional[float] = None
+    roc_curve: Optional[ROCCurve] = None
+    precision_recall_curve: Optional[PrecisionRecallCurve] = None
 
 
 class ModelListResponse(BaseModel):

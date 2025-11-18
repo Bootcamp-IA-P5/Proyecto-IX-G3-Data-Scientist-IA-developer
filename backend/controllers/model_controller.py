@@ -323,6 +323,126 @@ class ModelController:
             return None
     
     @staticmethod
+    def _calculate_curves(model_name: str, results: Optional[Dict[str, Any]]) -> tuple:
+        """
+        Calculate ROC and Precision-Recall curves from model and test data
+        
+        Args:
+            model_name: Name of the model file
+            results: Results dictionary (may contain optimal_threshold)
+            
+        Returns:
+            Tuple of (roc_curve_dict, precision_recall_curve_dict) or (None, None) if cannot be calculated
+        """
+        try:
+            # Load model
+            model = model_service.load_model(model_name)
+            if model is None:
+                return None, None
+            
+            # Load test data
+            import pickle
+            from pathlib import Path
+            
+            # Try to load test data from backend/data or data/
+            test_data_paths = [
+                Path(__file__).parent.parent.parent / "backend" / "data" / "X_test_scaled.pkl",
+                Path(__file__).parent.parent.parent / "data" / "X_test_scaled.pkl",
+            ]
+            
+            y_test_paths = [
+                Path(__file__).parent.parent.parent / "backend" / "data" / "y_test.pkl",
+                Path(__file__).parent.parent.parent / "data" / "y_test.pkl",
+            ]
+            
+            X_test = None
+            y_test = None
+            
+            for path in test_data_paths:
+                if path.exists():
+                    with open(path, 'rb') as f:
+                        X_test = pickle.load(f)
+                    break
+            
+            for path in y_test_paths:
+                if path.exists():
+                    with open(path, 'rb') as f:
+                        y_test = pickle.load(f)
+                    break
+            
+            if X_test is None or y_test is None:
+                return None, None
+            
+            # Make predictions - handle different model types
+            import numpy as np
+            
+            # Check if it's an XGBoost Booster (not wrapped)
+            model_type_str = str(type(model).__name__)
+            if "Booster" in model_type_str or "xgboost" in model_name.lower():
+                # XGBoost Booster uses predict() with output_margin=False
+                try:
+                    import xgboost as xgb
+                    if isinstance(model, xgb.Booster):
+                        # Convert to DMatrix for prediction
+                        dtest = xgb.DMatrix(X_test)
+                        y_pred_proba = model.predict(dtest, output_margin=False)
+                    else:
+                        # Wrapped XGBoost (XGBClassifier)
+                        y_pred_proba = model.predict_proba(X_test)
+                        if y_pred_proba.ndim > 1:
+                            y_pred_proba = y_pred_proba[:, 1]
+                except:
+                    # Fallback: try predict_proba
+                    try:
+                        y_pred_proba = model.predict_proba(X_test)
+                        if y_pred_proba.ndim > 1:
+                            y_pred_proba = y_pred_proba[:, 1]
+                    except:
+                        return None, None
+            else:
+                # Standard scikit-learn models
+                y_pred_proba = model.predict_proba(X_test)
+                if y_pred_proba.ndim > 1:
+                    y_pred_proba = y_pred_proba[:, 1]  # Get probability of positive class
+            
+            # Calculate ROC curve
+            from sklearn.metrics import roc_curve, auc, precision_recall_curve, f1_score
+            
+            fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+            roc_auc = auc(fpr, tpr)
+            
+            # Calculate Precision-Recall curve
+            precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
+            
+            # Get optimal threshold and calculate F1
+            optimal_threshold = 0.5
+            if results:
+                optimal_threshold = results.get("optimal_threshold", results.get("best_threshold", 0.5))
+            
+            y_pred_optimal = (y_pred_proba >= optimal_threshold).astype(int)
+            f1_optimal = f1_score(y_test, y_pred_optimal)
+            
+            # Convert to lists and apply convert_to_native
+            roc_curve_dict = {
+                "fpr": [float(x) for x in fpr.tolist()],
+                "tpr": [float(x) for x in tpr.tolist()],
+                "auc": float(roc_auc)
+            }
+            
+            precision_recall_curve_dict = {
+                "precision": [float(x) for x in precision.tolist()],
+                "recall": [float(x) for x in recall.tolist()],
+                "f1": float(f1_optimal)
+            }
+            
+            return roc_curve_dict, precision_recall_curve_dict
+            
+        except Exception as e:
+            # If calculation fails, return None (silent fail)
+            print(f"Warning: Could not calculate curves for {model_name}: {e}")
+            return None, None
+    
+    @staticmethod
     def get_model_list() -> ModelListResponse:
         """
         Get list of available models
@@ -376,6 +496,9 @@ class ModelController:
         # If confusion matrix not found in results, try to calculate it from model and test data
         if confusion_matrix is None:
             confusion_matrix = ModelController._calculate_confusion_matrix(model_name, results)
+        
+        # Calculate curves (ROC and Precision-Recall)
+        roc_curve_dict, precision_recall_curve_dict = ModelController._calculate_curves(model_name, results)
         
         if results:
             # Extract feature importance
@@ -517,6 +640,25 @@ class ModelController:
         if optimal_threshold is not None:
             optimal_threshold = convert_to_native(optimal_threshold)
         
+        # Process curves
+        from backend.schemas.model import ROCCurve, PrecisionRecallCurve
+        
+        roc_curve_obj = None
+        if roc_curve_dict:
+            roc_curve_obj = ROCCurve(
+                fpr=roc_curve_dict["fpr"],
+                tpr=roc_curve_dict["tpr"],
+                auc=roc_curve_dict.get("auc")
+            )
+        
+        precision_recall_curve_obj = None
+        if precision_recall_curve_dict:
+            precision_recall_curve_obj = PrecisionRecallCurve(
+                precision=precision_recall_curve_dict["precision"],
+                recall=precision_recall_curve_dict["recall"],
+                f1=precision_recall_curve_dict.get("f1")
+            )
+        
         return ModelInfoResponse(
             model_name=model_name,
             model_type=model_type,
@@ -527,7 +669,9 @@ class ModelController:
             feature_importance=feature_importance,
             confusion_matrix=confusion_matrix,  # Keep for backward compatibility
             confusion_matrix_info=confusion_matrix_info,
-            optimal_threshold=optimal_threshold
+            optimal_threshold=optimal_threshold,
+            roc_curve=roc_curve_obj,
+            precision_recall_curve=precision_recall_curve_obj
         )
 
 
