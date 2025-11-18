@@ -648,7 +648,8 @@ class ModelController:
             roc_curve_obj = ROCCurve(
                 fpr=roc_curve_dict["fpr"],
                 tpr=roc_curve_dict["tpr"],
-                auc=roc_curve_dict.get("auc")
+                auc=roc_curve_dict.get("auc"),
+                description="La curva ROC muestra la relación entre la tasa de verdaderos positivos (TPR) y la tasa de falsos positivos (FPR) para diferentes umbrales de decisión. Un AUC cercano a 1.0 indica un excelente modelo."
             )
         
         precision_recall_curve_obj = None
@@ -656,7 +657,8 @@ class ModelController:
             precision_recall_curve_obj = PrecisionRecallCurve(
                 precision=precision_recall_curve_dict["precision"],
                 recall=precision_recall_curve_dict["recall"],
-                f1=precision_recall_curve_dict.get("f1")
+                f1=precision_recall_curve_dict.get("f1"),
+                description="La curva Precision-Recall muestra el balance entre precisión (exactitud de predicciones positivas) y recall (capacidad de detectar todos los casos positivos). Es especialmente útil cuando las clases están desbalanceadas."
             )
         
         return ModelInfoResponse(

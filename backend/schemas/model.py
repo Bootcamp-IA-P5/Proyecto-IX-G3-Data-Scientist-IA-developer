@@ -19,17 +19,19 @@ class ConfusionMatrixInfo(BaseModel):
 
 
 class ROCCurve(BaseModel):
-    """ROC curve data"""
-    fpr: List[float]  # False Positive Rate
-    tpr: List[float]  # True Positive Rate
-    auc: Optional[float] = None  # Area Under Curve
+    """ROC curve data - Muestra la capacidad del modelo para distinguir entre clases"""
+    fpr: List[float]  # False Positive Rate (Tasa de Falsos Positivos)
+    tpr: List[float]  # True Positive Rate (Tasa de Verdaderos Positivos / Recall)
+    auc: Optional[float] = None  # Area Under Curve (Área bajo la curva, 0-1, mayor es mejor)
+    description: str = "La curva ROC muestra la relación entre la tasa de verdaderos positivos (TPR) y la tasa de falsos positivos (FPR) para diferentes umbrales de decisión. Un AUC cercano a 1.0 indica un excelente modelo."
 
 
 class PrecisionRecallCurve(BaseModel):
-    """Precision-Recall curve data"""
-    precision: List[float]
-    recall: List[float]
-    f1: Optional[float] = None  # F1 score at optimal threshold
+    """Precision-Recall curve data - Muestra el balance entre precisión y recall del modelo"""
+    precision: List[float]  # Precisión (de los casos predichos como positivos, cuántos son realmente positivos)
+    recall: List[float]  # Recall (de los casos realmente positivos, cuántos detectó el modelo)
+    f1: Optional[float] = None  # F1 score at optimal threshold (balance entre precisión y recall)
+    description: str = "La curva Precision-Recall muestra el balance entre precisión (exactitud de predicciones positivas) y recall (capacidad de detectar todos los casos positivos). Es especialmente útil cuando las clases están desbalanceadas."
 
 
 class ModelInfoResponse(BaseModel):
