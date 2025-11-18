@@ -370,6 +370,8 @@ class ModelController:
             else:
                 feature_importance = convert_to_native(feature_importance)
         
+        # Process confusion matrix
+        confusion_matrix_info = None
         if confusion_matrix is not None:
             # Convert confusion matrix to list of lists
             import numpy as np
@@ -377,6 +379,27 @@ class ModelController:
                 confusion_matrix = confusion_matrix.tolist()
             elif isinstance(confusion_matrix, (list, tuple)):
                 confusion_matrix = [[int(convert_to_native(cell)) for cell in row] for row in confusion_matrix]
+            
+            # Create detailed confusion matrix info
+            if isinstance(confusion_matrix, list) and len(confusion_matrix) == 2 and len(confusion_matrix[0]) == 2:
+                tn = int(confusion_matrix[0][0])  # True Negative
+                fp = int(confusion_matrix[0][1])  # False Positive
+                fn = int(confusion_matrix[1][0])  # False Negative
+                tp = int(confusion_matrix[1][1])  # True Positive
+                total = tn + fp + fn + tp
+                
+                from backend.schemas.model import ConfusionMatrixInfo
+                confusion_matrix_info = ConfusionMatrixInfo(
+                    matrix=confusion_matrix,
+                    labels=["No Ictus", "Ictus"],
+                    true_negative=tn,
+                    false_positive=fp,
+                    false_negative=fn,
+                    true_positive=tp,
+                    total=total,
+                    accuracy=round((tn + tp) / total, 4) if total > 0 else 0.0,
+                    error_rate=round((fp + fn) / total, 4) if total > 0 else 0.0
+                )
         
         if optimal_threshold is not None:
             optimal_threshold = convert_to_native(optimal_threshold)
@@ -389,7 +412,8 @@ class ModelController:
             hyperparameters=hyperparameters,
             metrics=metrics,
             feature_importance=feature_importance,
-            confusion_matrix=confusion_matrix,
+            confusion_matrix=confusion_matrix,  # Keep for backward compatibility
+            confusion_matrix_info=confusion_matrix_info,
             optimal_threshold=optimal_threshold
         )
 
