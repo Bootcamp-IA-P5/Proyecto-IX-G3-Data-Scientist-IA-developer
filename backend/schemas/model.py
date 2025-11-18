@@ -13,6 +13,9 @@ class ModelInfoResponse(BaseModel):
     features_required: Optional[List[str]] = None
     hyperparameters: Optional[Dict[str, Any]] = None
     metrics: Optional[Dict[str, float]] = None
+    feature_importance: Optional[List[Dict[str, Any]]] = None
+    confusion_matrix: Optional[List[List[int]]] = None
+    optimal_threshold: Optional[float] = None
 
 
 class ModelListResponse(BaseModel):

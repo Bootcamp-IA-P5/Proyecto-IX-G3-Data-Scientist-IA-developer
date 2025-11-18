@@ -56,6 +56,7 @@ class ModelController:
             f"{base_name}_params.pkl",
             "rf_best_params.pkl" if "random_forest" in model_name.lower() else None,
             "logistic_regression_best_params.pkl" if "logistic" in model_name.lower() else None,
+            "xgboost_best_params_no_smote.pkl" if "xgboost" in model_name.lower() else None,
         ]
         
         # Search in both directories
@@ -258,6 +259,54 @@ class ModelController:
         results = ModelController._load_model_results(model_name)
         metrics = ModelController._extract_metrics_from_results(results) if results else None
         
+        # Extract additional information from results
+        feature_importance = None
+        confusion_matrix = None
+        optimal_threshold = None
+        
+        if results:
+            # Extract feature importance
+            if "feature_importance" in results:
+                feature_importance = results["feature_importance"]
+            elif "feature_importances" in results:
+                # Convert array to list of dicts
+                import numpy as np
+                importances = results["feature_importances"]
+                if isinstance(importances, (list, np.ndarray)):
+                    # If we have feature names, use them
+                    try:
+                        from backend.services.preprocessing_service import preprocessing_service
+                        feature_names = preprocessing_service.expected_columns or []
+                        if feature_names and len(feature_names) == len(importances):
+                            feature_importance = [
+                                {"feature": name, "importance": float(imp)}
+                                for name, imp in zip(feature_names, importances)
+                            ]
+                        else:
+                            feature_importance = [
+                                {"feature": f"feature_{i}", "importance": float(imp)}
+                                for i, imp in enumerate(importances)
+                            ]
+                    except:
+                        feature_importance = [
+                            {"feature": f"feature_{i}", "importance": float(imp)}
+                            for i, imp in enumerate(importances)
+                        ]
+            
+            # Extract confusion matrix
+            if "test_confusion_matrix" in results:
+                confusion_matrix = results["test_confusion_matrix"]
+            elif "confusion_matrix" in results:
+                confusion_matrix = results["confusion_matrix"]
+            elif "validation_confusion_matrix" in results:
+                confusion_matrix = results["validation_confusion_matrix"]
+            
+            # Extract optimal threshold
+            if "optimal_threshold" in results:
+                optimal_threshold = results["optimal_threshold"]
+            elif "best_threshold" in results:
+                optimal_threshold = results["best_threshold"]
+        
         # Get features (from preprocessing service if available)
         features_required = None
         try:
@@ -304,13 +353,34 @@ class ModelController:
                 for k, v in metrics.items()
             }
         
+        # Convert feature importance and confusion matrix
+        if feature_importance:
+            if isinstance(feature_importance, list):
+                feature_importance = [convert_to_native(item) for item in feature_importance]
+            else:
+                feature_importance = convert_to_native(feature_importance)
+        
+        if confusion_matrix is not None:
+            # Convert confusion matrix to list of lists
+            import numpy as np
+            if isinstance(confusion_matrix, np.ndarray):
+                confusion_matrix = confusion_matrix.tolist()
+            elif isinstance(confusion_matrix, (list, tuple)):
+                confusion_matrix = [[int(convert_to_native(cell)) for cell in row] for row in confusion_matrix]
+        
+        if optimal_threshold is not None:
+            optimal_threshold = convert_to_native(optimal_threshold)
+        
         return ModelInfoResponse(
             model_name=model_name,
             model_type=model_type,
             is_loaded=is_loaded,
             features_required=features_required,
             hyperparameters=hyperparameters,
-            metrics=metrics
+            metrics=metrics,
+            feature_importance=feature_importance,
+            confusion_matrix=confusion_matrix,
+            optimal_threshold=optimal_threshold
         )
 
 
