@@ -214,6 +214,115 @@ class ModelController:
         return metrics if metrics else None
     
     @staticmethod
+    def _calculate_confusion_matrix(model_name: str, results: Optional[Dict[str, Any]]) -> Optional[List[List[int]]]:
+        """
+        Calculate confusion matrix from model and test data if not available in results
+        
+        Args:
+            model_name: Name of the model file
+            results: Results dictionary (may contain optimal_threshold)
+            
+        Returns:
+            Confusion matrix as list of lists or None if cannot be calculated
+        """
+        try:
+            # Load model
+            model = model_service.load_model(model_name)
+            if model is None:
+                return None
+            
+            # Load test data
+            import pickle
+            from pathlib import Path
+            
+            # Try to load test data from backend/data or data/
+            test_data_paths = [
+                Path(__file__).parent.parent.parent / "backend" / "data" / "X_test_scaled.pkl",
+                Path(__file__).parent.parent.parent / "data" / "X_test_scaled.pkl",
+            ]
+            
+            y_test_paths = [
+                Path(__file__).parent.parent.parent / "backend" / "data" / "y_test.pkl",
+                Path(__file__).parent.parent.parent / "data" / "y_test.pkl",
+            ]
+            
+            X_test = None
+            y_test = None
+            
+            for path in test_data_paths:
+                if path.exists():
+                    with open(path, 'rb') as f:
+                        X_test = pickle.load(f)
+                    break
+            
+            for path in y_test_paths:
+                if path.exists():
+                    with open(path, 'rb') as f:
+                        y_test = pickle.load(f)
+                    break
+            
+            if X_test is None or y_test is None:
+                return None
+            
+            # Get optimal threshold from results if available, otherwise use 0.5
+            threshold = 0.5
+            if results:
+                threshold = results.get("optimal_threshold", results.get("best_threshold", 0.5))
+            
+            # Make predictions - handle different model types
+            import numpy as np
+            
+            # Check if it's an XGBoost Booster (not wrapped)
+            model_type_str = str(type(model).__name__)
+            if "Booster" in model_type_str or "xgboost" in model_name.lower():
+                # XGBoost Booster uses predict() with output_margin=False
+                try:
+                    import xgboost as xgb
+                    if isinstance(model, xgb.Booster):
+                        # Convert to DMatrix for prediction
+                        dtest = xgb.DMatrix(X_test)
+                        y_pred_proba = model.predict(dtest, output_margin=False)
+                        # XGBoost predict returns probabilities directly for binary classification
+                    else:
+                        # Wrapped XGBoost (XGBClassifier)
+                        y_pred_proba = model.predict_proba(X_test)
+                        if y_pred_proba.ndim > 1:
+                            y_pred_proba = y_pred_proba[:, 1]
+                except:
+                    # Fallback: try predict_proba
+                    try:
+                        y_pred_proba = model.predict_proba(X_test)
+                        if y_pred_proba.ndim > 1:
+                            y_pred_proba = y_pred_proba[:, 1]
+                    except:
+                        # Last resort: use predict (binary)
+                        y_pred = model.predict(X_test)
+                        # Calculate confusion matrix directly
+                        from sklearn.metrics import confusion_matrix
+                        cm = confusion_matrix(y_test, y_pred)
+                        return cm.tolist()
+            else:
+                # Standard scikit-learn models
+                y_pred_proba = model.predict_proba(X_test)
+                if y_pred_proba.ndim > 1:
+                    y_pred_proba = y_pred_proba[:, 1]  # Get probability of positive class
+            
+            # Apply threshold
+            y_pred = (y_pred_proba >= threshold).astype(int)
+            
+            # Calculate confusion matrix
+            from sklearn.metrics import confusion_matrix
+            cm = confusion_matrix(y_test, y_pred)
+            
+            # Convert to list of lists
+            return cm.tolist()
+            
+        except Exception as e:
+            # If calculation fails, return None (silent fail)
+            print(f"Warning: Could not calculate confusion matrix for {model_name}: {e}")
+            return None
+    
+    @staticmethod
     def get_model_list() -> ModelListResponse:
         """
         Get list of available models
@@ -263,6 +372,10 @@ class ModelController:
         feature_importance = None
         confusion_matrix = None
         optimal_threshold = None
+        
+        # If confusion matrix not found in results, try to calculate it from model and test data
+        if confusion_matrix is None:
+            confusion_matrix = ModelController._calculate_confusion_matrix(model_name, results)
         
         if results:
             # Extract feature importance
