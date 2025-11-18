@@ -4,18 +4,67 @@
 
 Se han agregado **2 nuevos endpoints principales** para mejorar el dashboard y el centro de control:
 
-1. **`GET /dashboard`** - Dashboard consolidado con estadísticas y métricas
-2. **`GET /control-center`** - Centro de control con monitoreo detallado del sistema
+1. **`GET /dashboard`** - Panel Estadístico consolidado con estadísticas y métricas
+2. **`GET /control-center`** - Centro de Control (dashboard principal) con monitoreo detallado del sistema
+
+---
+
+## 🗺️ Mapeo de Endpoints a Secciones del Menú
+
+Basado en el menú de navegación, aquí está el mapeo de endpoints:
+
+| Sección del Menú | Endpoint | Descripción |
+|-----------------|----------|-------------|
+| **🎛️ Centro de Control** | `GET /control-center` | Dashboard principal con estado del sistema, componentes, salud de modelos |
+| **🧠 Evaluación Individual** | `POST /predict` | Predicción individual de un paciente |
+| **⚙️ Análisis Masivo** | `POST /predict/batch` | Predicciones en lote de múltiples pacientes |
+| **⚡ Modelos IA** | `GET /models`<br>`GET /models/{model_name}` | Lista de modelos e información detallada |
+| **📊 Panel Estadístico** | `GET /dashboard`<br>`GET /stats/overview`<br>`GET /stats/risk-distribution`<br>`GET /stats/models/compare` | Estadísticas, métricas y comparación de modelos |
+| **📚 Base de Conocimiento** | *(Por implementar)* | Documentación y ayuda |
+
+### Panel Rápido (Sidebar)
+
+El **Panel Rápido** que muestra "Predicciones Hoy" y "Precisión Modelo" puede usar:
+
+**Opción 1: Usar `/dashboard`**
+```typescript
+const response = await fetch('/dashboard');
+const data = await response.json();
+
+// Predicciones Hoy
+const prediccionesHoy = data.total_predictions; // 68
+
+// Precisión Modelo
+const precisionModelo = data.best_model_metrics?.accuracy || 0; // 0.7482 = 74.82%
+// O si quieres mostrar como porcentaje:
+const precisionPorcentaje = (data.best_model_metrics?.accuracy * 100).toFixed(1); // "74.8%"
+```
+
+**Opción 2: Usar `/control-center`**
+```typescript
+const response = await fetch('/control-center');
+const data = await response.json();
+
+// Predicciones Hoy
+const prediccionesHoy = data.total_predictions; // 68
+
+// Precisión Modelo (necesitarías buscar el mejor modelo)
+// Mejor usar /dashboard para esto
+```
+
+**Recomendación:** Usar `GET /dashboard` para el Panel Rápido ya que incluye directamente `best_model_metrics.accuracy`.
 
 ---
 
 ## 🎯 Endpoints Nuevos
 
-### 1. Dashboard: `GET /dashboard`
+### 1. Panel Estadístico: `GET /dashboard`
 
 **URL:** `http://localhost:8000/dashboard`
 
-**Descripción:** Endpoint consolidado que devuelve toda la información necesaria para el dashboard en una sola llamada.
+**Sección del Menú:** 📊 Panel Estadístico
+
+**Descripción:** Endpoint consolidado que devuelve toda la información necesaria para el panel estadístico en una sola llamada.
 
 **Respuesta incluye:**
 - Estado del sistema (API, modelos)
@@ -29,11 +78,13 @@ Se han agregado **2 nuevos endpoints principales** para mejorar el dashboard y e
 
 ---
 
-### 2. Control Center: `GET /control-center`
+### 2. Centro de Control: `GET /control-center`
 
 **URL:** `http://localhost:8000/control-center`
 
-**Descripción:** Endpoint completo para el centro de control con monitoreo detallado del sistema.
+**Sección del Menú:** 🎛️ Centro de Control (Dashboard Principal)
+
+**Descripción:** Endpoint completo para el centro de control (dashboard principal) con monitoreo detallado del sistema. Este es el dashboard inicial que se muestra al entrar a la aplicación.
 
 **Respuesta incluye:**
 - **Componentes del sistema:**
@@ -222,23 +273,48 @@ Los siguientes endpoints **siguen disponibles** y funcionando:
 
 ---
 
-## ✅ Checklist de Integración
+## ✅ Checklist de Integración por Sección
 
-### Dashboard:
-- [ ] Integrar `GET /dashboard`
-- [ ] Crear componente "Best Model Card" destacando Logistic Regression
-- [ ] Implementar gráficos (pastel, barras, comparación)
-- [ ] Mostrar estadísticas de predicciones
-- [ ] Agregar actualización automática (polling)
-
-### Control Center:
-- [ ] Integrar `GET /control-center`
-- [ ] Crear panel de componentes con barras de progreso
+### 🎛️ Centro de Control (Dashboard Principal):
+- [ ] Integrar `GET /control-center` como página principal
+- [ ] Crear panel de componentes con barras de progreso (API, Modelos, Servicios, Almacenamiento)
 - [ ] Implementar panel de salud de modelos
-- [ ] Mostrar recursos del sistema
+- [ ] Mostrar recursos del sistema (almacenamiento)
 - [ ] Implementar sistema de alertas/advertencias
 - [ ] Agregar panel de configuración
-- [ ] Agregar actualización automática (polling)
+- [ ] Agregar actualización automática (polling cada 10s)
+
+### 📊 Panel Estadístico:
+- [ ] Integrar `GET /dashboard`
+- [ ] Crear componente "Best Model Card" destacando Logistic Regression
+- [ ] Implementar gráficos (pastel: Stroke vs No Stroke, barras: distribución de riesgo)
+- [ ] Mostrar estadísticas de predicciones
+- [ ] Crear tabla comparativa de modelos
+- [ ] Agregar actualización automática (polling cada 10s)
+
+### 🧠 Evaluación Individual:
+- [ ] Usar `POST /predict` para predicción individual
+- [ ] Formulario de entrada de datos del paciente
+- [ ] Mostrar resultado con probabilidad y confianza
+- [ ] Opción para seleccionar modelo específico (query param `model_name`)
+
+### ⚙️ Análisis Masivo:
+- [ ] Usar `POST /predict/batch` para predicciones en lote
+- [ ] Carga de archivo CSV o formulario múltiple
+- [ ] Tabla de resultados con todas las predicciones
+- [ ] Exportar resultados
+
+### ⚡ Modelos IA:
+- [ ] Usar `GET /models` para lista de modelos
+- [ ] Usar `GET /models/{model_name}` para detalles
+- [ ] Mostrar métricas, hiperparámetros, estado
+- [ ] Comparación visual de modelos
+
+### 📱 Panel Rápido (Sidebar):
+- [ ] Integrar `GET /dashboard` para datos rápidos
+- [ ] Mostrar "Predicciones Hoy": `total_predictions`
+- [ ] Mostrar "Precisión Modelo": `best_model_metrics.accuracy * 100`
+- [ ] Actualizar cada 30-60 segundos (menos frecuente que el dashboard principal)
 
 ---
 
