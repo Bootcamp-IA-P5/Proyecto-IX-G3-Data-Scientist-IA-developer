@@ -22,12 +22,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.info(f"🌐 CORS Origins configured: {cors_origins}")
 
+# Configure CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://proyecto-ix-g3-data-scientist-ia.onrender.com",
-        "http://localhost:3000",  # Para desarrollo local
-    ],
+    allow_origins=cors_origins,  # Use dynamic configuration from settings
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

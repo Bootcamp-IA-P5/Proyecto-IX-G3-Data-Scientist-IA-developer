@@ -63,11 +63,10 @@ class Settings(BaseSettings):
             normalized_origins.append(default_prod)
             normalized_origins.append(default_prod + "/")
         
-        # Add localhost origins if not in production
-        if os.getenv("ENVIRONMENT", "development") == "development":
-            for local_origin in default_origins:
-                if local_origin not in normalized_origins:
-                    normalized_origins.append(local_origin)
+        # Always include localhost origins for local development (even when testing against production backend)
+        for local_origin in ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"]:
+            if local_origin not in normalized_origins:
+                normalized_origins.append(local_origin)
         
         return normalized_origins
     
