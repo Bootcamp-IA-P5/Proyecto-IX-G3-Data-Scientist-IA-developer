@@ -22,7 +22,13 @@ from backend.schemas.stats import (
     StatsOverviewResponse,
     RiskDistributionResponse,
     ModelComparisonResponse,
-    DashboardResponse
+    DashboardResponse,
+    DatasetOverviewResponse,
+    DemographicsResponse,
+    ClinicalStatsResponse,
+    CorrelationResponse,
+    HighRiskProfilesResponse,
+    HighRiskProfile
 )
 from backend.schemas.error import ErrorResponse
 
@@ -46,6 +52,13 @@ __all__ = [
     "RiskDistributionResponse",
     "ModelComparisonResponse",
     "DashboardResponse",
+    # Dataset Statistics
+    "DatasetOverviewResponse",
+    "DemographicsResponse",
+    "ClinicalStatsResponse",
+    "CorrelationResponse",
+    "HighRiskProfilesResponse",
+    "HighRiskProfile",
     # Error
     "ErrorResponse",
 ]
