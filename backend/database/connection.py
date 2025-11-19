@@ -19,11 +19,16 @@ if DATABASE_URL is None:
     print("⚠️  DATABASE_URL not set. Using SQLite for local development.")
 
 # SQLAlchemy engine
+# Configure connection args based on database type
+connect_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
 engine = create_engine(
     DATABASE_URL,
     echo=True,  # Change to False in production
     pool_pre_ping=True,  # Verifies connections before using them
-    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+    connect_args=connect_args
 )
 
 # Session creator

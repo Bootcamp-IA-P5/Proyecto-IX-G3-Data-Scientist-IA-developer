@@ -3,7 +3,9 @@ Configuration settings for the API
 """
 import os
 from pathlib import Path
+from typing import List
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -18,21 +20,33 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = int(os.getenv("PORT", "8000"))  # Render uses PORT env var
     
-    # CORS Settings
-    # Read from environment variable or use defaults
-    # Format: comma-separated URLs, e.g., "http://localhost:3000,https://proyecto-ix-g3-data-scientist-ia.onrender.com"
-    _cors_origins_env: str = os.getenv("CORS_ORIGINS", "")
-    CORS_ORIGINS: list = (
-        [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
-        if _cors_origins_env
-        else [
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5173",
-            "https://proyecto-ix-g3-data-scientist-ia.onrender.com",  # Production frontend
-        ]
-    )
+    # CORS Settings - processed manually to avoid JSON parsing issues
+    # This field is excluded from automatic parsing and handled in __init__
+    _cors_origins_raw: str = ""
+    
+    @property
+    def CORS_ORIGINS(self) -> List[str]:
+        """Get CORS origins as a list, parsing from comma-separated string"""
+        # Read from environment variable directly
+        cors_env = os.getenv("CORS_ORIGINS", "")
+        
+        if not cors_env.strip():
+            # Return default origins if empty
+            return [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173",
+                "https://proyecto-ix-g3-data-scientist-ia.onrender.com",  # Production frontend
+            ]
+        
+        # Split by comma and strip whitespace
+        origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
+        # Always include production frontend if not already present
+        default_prod = "https://proyecto-ix-g3-data-scientist-ia.onrender.com"
+        if default_prod not in origins:
+            origins.append(default_prod)
+        return origins
     
     # Model Settings
     MODELS_DIR: Path = Path(__file__).parent.parent / "models"
