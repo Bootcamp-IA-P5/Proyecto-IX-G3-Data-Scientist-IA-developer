@@ -237,16 +237,23 @@ class ModelController:
             from backend.config import settings
             
             # Try to load test data from multiple locations
+            # In Docker, working directory is /app, so paths are relative to that
             # Priority: backend/data/ (copied in Docker), src/data/, data/
-            base_path = Path(__file__).parent.parent.parent
+            base_path = Path(__file__).parent.parent.parent  # From controller -> backend -> project root
+            current_dir = Path.cwd()  # Current working directory (could be /app in Docker)
+            
             test_data_paths = [
-                base_path / "backend" / "data" / "X_test_scaled.pkl",  # backend/data/ (Docker)
+                Path("/app") / "backend" / "data" / "X_test_scaled.pkl",  # Docker absolute path
+                current_dir / "backend" / "data" / "X_test_scaled.pkl",  # Relative to current dir
+                base_path / "backend" / "data" / "X_test_scaled.pkl",  # Relative to controller location
                 settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/
                 base_path / "data" / "X_test_scaled.pkl",  # data/ (local)
             ]
             
             y_test_paths = [
-                base_path / "backend" / "data" / "y_test.pkl",  # backend/data/ (Docker)
+                Path("/app") / "backend" / "data" / "y_test.pkl",  # Docker absolute path
+                current_dir / "backend" / "data" / "y_test.pkl",  # Relative to current dir
+                base_path / "backend" / "data" / "y_test.pkl",  # Relative to controller location
                 settings.DATA_DIR / "y_test.pkl",  # src/data/
                 base_path / "data" / "y_test.pkl",  # data/ (local)
             ]
@@ -267,6 +274,13 @@ class ModelController:
                     break
             
             if X_test is None or y_test is None:
+                # Log which paths were tried for debugging
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"⚠️  Could not find test data for {model_name}")
+                logger.warning(f"   Tried X_test paths: {[str(p) for p in test_data_paths]}")
+                logger.warning(f"   Tried y_test paths: {[str(p) for p in y_test_paths]}")
+                logger.warning(f"   Found: X_test={X_test is not None}, y_test={y_test is not None}")
                 return None
             
             # Get optimal threshold from results if available, otherwise use 0.5
@@ -323,8 +337,13 @@ class ModelController:
             return cm.tolist()
             
         except Exception as e:
-            # If calculation fails, return None (silent fail)
-            print(f"Warning: Could not calculate confusion matrix for {model_name}: {e}")
+            # If calculation fails, log the error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"❌ Could not calculate confusion matrix for {model_name}: {e}")
+            logger.error(f"   Error type: {type(e).__name__}")
+            import traceback
+            logger.error(f"   Traceback: {traceback.format_exc()}")
             return None
     
     @staticmethod
@@ -351,16 +370,23 @@ class ModelController:
             from backend.config import settings
             
             # Try to load test data from multiple locations
+            # In Docker, working directory is /app, so paths are relative to that
             # Priority: backend/data/ (copied in Docker), src/data/, data/
-            base_path = Path(__file__).parent.parent.parent
+            base_path = Path(__file__).parent.parent.parent  # From controller -> backend -> project root
+            current_dir = Path.cwd()  # Current working directory (could be /app in Docker)
+            
             test_data_paths = [
-                base_path / "backend" / "data" / "X_test_scaled.pkl",  # backend/data/ (Docker)
+                Path("/app") / "backend" / "data" / "X_test_scaled.pkl",  # Docker absolute path
+                current_dir / "backend" / "data" / "X_test_scaled.pkl",  # Relative to current dir
+                base_path / "backend" / "data" / "X_test_scaled.pkl",  # Relative to controller location
                 settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/
                 base_path / "data" / "X_test_scaled.pkl",  # data/ (local)
             ]
             
             y_test_paths = [
-                base_path / "backend" / "data" / "y_test.pkl",  # backend/data/ (Docker)
+                Path("/app") / "backend" / "data" / "y_test.pkl",  # Docker absolute path
+                current_dir / "backend" / "data" / "y_test.pkl",  # Relative to current dir
+                base_path / "backend" / "data" / "y_test.pkl",  # Relative to controller location
                 settings.DATA_DIR / "y_test.pkl",  # src/data/
                 base_path / "data" / "y_test.pkl",  # data/ (local)
             ]
@@ -381,6 +407,13 @@ class ModelController:
                     break
             
             if X_test is None or y_test is None:
+                # Log which paths were tried for debugging
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"⚠️  Could not find test data for {model_name}")
+                logger.warning(f"   Tried X_test paths: {[str(p) for p in test_data_paths]}")
+                logger.warning(f"   Tried y_test paths: {[str(p) for p in y_test_paths]}")
+                logger.warning(f"   Found: X_test={X_test is not None}, y_test={y_test is not None}")
                 return None, None
             
             # Make predictions - handle different model types
@@ -559,7 +592,14 @@ class ModelController:
         
         # SECOND: If confusion matrix not found in results, try to calculate it from model and test data
         if confusion_matrix is None:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"📊 Calculating confusion matrix dynamically for {model_name}")
             confusion_matrix = ModelController._calculate_confusion_matrix(model_name, results)
+            if confusion_matrix is not None:
+                logger.info(f"✅ Successfully calculated confusion matrix for {model_name}: {confusion_matrix}")
+            else:
+                logger.warning(f"⚠️  Failed to calculate confusion matrix for {model_name}")
         
         # Calculate curves (ROC and Precision-Recall)
         roc_curve_dict, precision_recall_curve_dict = ModelController._calculate_curves(model_name, results)
