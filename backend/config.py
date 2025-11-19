@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     
+    # Database Settings
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
