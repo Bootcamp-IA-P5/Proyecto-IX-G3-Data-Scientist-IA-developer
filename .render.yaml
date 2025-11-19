@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: stroke-prediction-api
+    runtime: docker
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+    autoDeploy: true
+
