@@ -36,6 +36,8 @@ class PrecisionRecallCurve(BaseModel):
 
 class ModelInfoResponse(BaseModel):
     """Response model for model information"""
+    model_config = {"protected_namespaces": ()}
+    
     model_name: str
     model_type: str
     is_loaded: bool

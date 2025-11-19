@@ -22,6 +22,8 @@ class PredictionRequest(BaseModel):
 
 class PredictionResponse(BaseModel):
     """Response model for prediction"""
+    model_config = {"protected_namespaces": ()}
+    
     prediction: int = Field(..., ge=0, le=1)
     probability: float = Field(..., ge=0, le=1)
     model_used: str
@@ -36,6 +38,8 @@ class BatchPredictionRequest(BaseModel):
 
 class BatchPredictionResponse(BaseModel):
     """Response model for batch predictions"""
+    model_config = {"protected_namespaces": ()}
+    
     predictions: List[PredictionResponse]
     total: int
     model_used: str
