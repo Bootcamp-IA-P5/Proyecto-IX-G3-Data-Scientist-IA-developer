@@ -16,15 +16,23 @@ class Settings(BaseSettings):
     
     # Server Settings
     HOST: str = "0.0.0.0"
-    PORT: int = 8000
+    PORT: int = int(os.getenv("PORT", "8000"))  # Render uses PORT env var
     
     # CORS Settings
-    CORS_ORIGINS: list = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-    ]
+    # Read from environment variable or use defaults
+    # Format: comma-separated URLs, e.g., "http://localhost:3000,https://proyecto-ix-g3-data-scientist-ia.onrender.com"
+    _cors_origins_env: str = os.getenv("CORS_ORIGINS", "")
+    CORS_ORIGINS: list = (
+        [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
+        if _cors_origins_env
+        else [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+            "https://proyecto-ix-g3-data-scientist-ia.onrender.com",  # Production frontend
+        ]
+    )
     
     # Model Settings
     MODELS_DIR: Path = Path(__file__).parent.parent / "models"
