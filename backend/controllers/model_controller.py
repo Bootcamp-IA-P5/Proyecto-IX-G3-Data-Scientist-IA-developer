@@ -226,10 +226,16 @@ class ModelController:
             Confusion matrix as list of lists or None if cannot be calculated
         """
         try:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"🔧 Starting confusion matrix calculation for {model_name}")
+            
             # Load model
             model = model_service.load_model(model_name)
             if model is None:
+                logger.error(f"❌ Could not load model {model_name}")
                 return None
+            logger.info(f"✅ Model loaded: {type(model).__name__}")
             
             # Load test data
             import pickle
@@ -242,45 +248,61 @@ class ModelController:
             base_path = Path(__file__).parent.parent.parent  # From controller -> backend -> project root
             current_dir = Path.cwd()  # Current working directory (could be /app in Docker)
             
+            logger.info(f"📍 Path info: base_path={base_path}, current_dir={current_dir}, __file__={Path(__file__)}")
+            
             test_data_paths = [
-                Path("/app") / "backend" / "data" / "X_test_scaled.pkl",  # Docker absolute path
-                current_dir / "backend" / "data" / "X_test_scaled.pkl",  # Relative to current dir
-                base_path / "backend" / "data" / "X_test_scaled.pkl",  # Relative to controller location
-                settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/
-                base_path / "data" / "X_test_scaled.pkl",  # data/ (local)
+                Path("/app") / "data" / "X_test_scaled.pkl",  # Docker absolute path (raíz)
+                current_dir / "data" / "X_test_scaled.pkl",  # Relative to current dir (raíz)
+                base_path / "data" / "X_test_scaled.pkl",  # Relative to controller location (raíz)
+                Path("/app") / "backend" / "data" / "X_test_scaled.pkl",  # Docker backend/data/ (fallback)
+                current_dir / "backend" / "data" / "X_test_scaled.pkl",  # Relative backend/data/ (fallback)
+                base_path / "backend" / "data" / "X_test_scaled.pkl",  # Relative backend/data/ (fallback)
+                settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/ (fallback)
             ]
             
             y_test_paths = [
-                Path("/app") / "backend" / "data" / "y_test.pkl",  # Docker absolute path
-                current_dir / "backend" / "data" / "y_test.pkl",  # Relative to current dir
-                base_path / "backend" / "data" / "y_test.pkl",  # Relative to controller location
-                settings.DATA_DIR / "y_test.pkl",  # src/data/
-                base_path / "data" / "y_test.pkl",  # data/ (local)
+                Path("/app") / "data" / "y_test.pkl",  # Docker absolute path (raíz)
+                current_dir / "data" / "y_test.pkl",  # Relative to current dir (raíz)
+                base_path / "data" / "y_test.pkl",  # Relative to controller location (raíz)
+                Path("/app") / "backend" / "data" / "y_test.pkl",  # Docker backend/data/ (fallback)
+                current_dir / "backend" / "data" / "y_test.pkl",  # Relative backend/data/ (fallback)
+                base_path / "backend" / "data" / "y_test.pkl",  # Relative backend/data/ (fallback)
+                settings.DATA_DIR / "y_test.pkl",  # src/data/ (fallback)
             ]
             
             X_test = None
             y_test = None
             
+            logger.info(f"🔍 Searching for X_test_scaled.pkl for {model_name}")
             for path in test_data_paths:
-                if path.exists():
+                exists = path.exists()
+                logger.info(f"   Trying: {path} (exists: {exists})")
+                if exists:
+                    logger.info(f"   ✅ Found X_test at: {path}")
                     with open(path, 'rb') as f:
                         X_test = pickle.load(f)
+                    logger.info(f"   ✅ Loaded X_test shape: {X_test.shape if hasattr(X_test, 'shape') else 'N/A'}")
                     break
             
+            logger.info(f"🔍 Searching for y_test.pkl for {model_name}")
             for path in y_test_paths:
-                if path.exists():
+                exists = path.exists()
+                logger.info(f"   Trying: {path} (exists: {exists})")
+                if exists:
+                    logger.info(f"   ✅ Found y_test at: {path}")
                     with open(path, 'rb') as f:
                         y_test = pickle.load(f)
+                    logger.info(f"   ✅ Loaded y_test shape: {y_test.shape if hasattr(y_test, 'shape') else len(y_test) if hasattr(y_test, '__len__') else 'N/A'}")
                     break
             
             if X_test is None or y_test is None:
                 # Log which paths were tried for debugging
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.warning(f"⚠️  Could not find test data for {model_name}")
                 logger.warning(f"   Tried X_test paths: {[str(p) for p in test_data_paths]}")
                 logger.warning(f"   Tried y_test paths: {[str(p) for p in y_test_paths]}")
                 logger.warning(f"   Found: X_test={X_test is not None}, y_test={y_test is not None}")
+                logger.warning(f"   Current working directory: {Path.cwd()}")
+                logger.warning(f"   __file__ location: {Path(__file__)}")
                 return None
             
             # Get optimal threshold from results if available, otherwise use 0.5
@@ -371,24 +393,28 @@ class ModelController:
             
             # Try to load test data from multiple locations
             # In Docker, working directory is /app, so paths are relative to that
-            # Priority: backend/data/ (copied in Docker), src/data/, data/
+            # Priority: data/ (raíz, copiado en Docker), backend/data/, src/data/
             base_path = Path(__file__).parent.parent.parent  # From controller -> backend -> project root
             current_dir = Path.cwd()  # Current working directory (could be /app in Docker)
             
             test_data_paths = [
-                Path("/app") / "backend" / "data" / "X_test_scaled.pkl",  # Docker absolute path
-                current_dir / "backend" / "data" / "X_test_scaled.pkl",  # Relative to current dir
-                base_path / "backend" / "data" / "X_test_scaled.pkl",  # Relative to controller location
-                settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/
-                base_path / "data" / "X_test_scaled.pkl",  # data/ (local)
+                Path("/app") / "data" / "X_test_scaled.pkl",  # Docker absolute path (raíz)
+                current_dir / "data" / "X_test_scaled.pkl",  # Relative to current dir (raíz)
+                base_path / "data" / "X_test_scaled.pkl",  # Relative to controller location (raíz)
+                Path("/app") / "backend" / "data" / "X_test_scaled.pkl",  # Docker backend/data/ (fallback)
+                current_dir / "backend" / "data" / "X_test_scaled.pkl",  # Relative backend/data/ (fallback)
+                base_path / "backend" / "data" / "X_test_scaled.pkl",  # Relative backend/data/ (fallback)
+                settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/ (fallback)
             ]
             
             y_test_paths = [
-                Path("/app") / "backend" / "data" / "y_test.pkl",  # Docker absolute path
-                current_dir / "backend" / "data" / "y_test.pkl",  # Relative to current dir
-                base_path / "backend" / "data" / "y_test.pkl",  # Relative to controller location
-                settings.DATA_DIR / "y_test.pkl",  # src/data/
-                base_path / "data" / "y_test.pkl",  # data/ (local)
+                Path("/app") / "data" / "y_test.pkl",  # Docker absolute path (raíz)
+                current_dir / "data" / "y_test.pkl",  # Relative to current dir (raíz)
+                base_path / "data" / "y_test.pkl",  # Relative to controller location (raíz)
+                Path("/app") / "backend" / "data" / "y_test.pkl",  # Docker backend/data/ (fallback)
+                current_dir / "backend" / "data" / "y_test.pkl",  # Relative backend/data/ (fallback)
+                base_path / "backend" / "data" / "y_test.pkl",  # Relative backend/data/ (fallback)
+                settings.DATA_DIR / "y_test.pkl",  # src/data/ (fallback)
             ]
             
             X_test = None
