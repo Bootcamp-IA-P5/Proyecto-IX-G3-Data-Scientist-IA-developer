@@ -30,6 +30,8 @@ class ModelComparisonResponse(BaseModel):
 
 class DashboardResponse(BaseModel):
     """Response model for dashboard - combines all relevant information"""
+    model_config = {"protected_namespaces": ()}
+    
     # System status
     api_status: str
     models_loaded: int
@@ -55,4 +57,59 @@ class DashboardResponse(BaseModel):
     
     # Model performance summary
     model_performance_summary: Dict[str, Any]
+
+
+# Dataset Statistics Schemas
+class DatasetOverviewResponse(BaseModel):
+    """Response model for dataset overview"""
+    total_samples: int
+    total_features: int
+    stroke_cases: int
+    no_stroke_cases: int
+    class_balance: Dict[str, float]
+    missing_values: int
+
+
+class AgeDistribution(BaseModel):
+    """Age distribution item"""
+    range: str
+    count: int
+    stroke_rate: float
+
+
+class DemographicsResponse(BaseModel):
+    """Response model for demographics statistics"""
+    age: Dict[str, Any]  # mean, median, std, distribution
+    gender: Dict[str, Dict[str, Any]]
+    marital_status: Dict[str, Dict[str, Any]]
+
+
+class ClinicalStatsResponse(BaseModel):
+    """Response model for clinical statistics"""
+    hypertension: Dict[str, Dict[str, Any]]
+    heart_disease: Dict[str, Dict[str, Any]]
+    avg_glucose_level: Dict[str, Any]
+    bmi: Dict[str, Any]
+    smoking_status: Dict[str, Dict[str, Any]]
+
+
+class CorrelationResponse(BaseModel):
+    """Response model for correlation analysis"""
+    correlation_matrix: Dict[str, float]
+    top_risk_factors: List[Dict[str, Any]]
+
+
+class HighRiskProfile(BaseModel):
+    """High-risk profile"""
+    id: int
+    name: str
+    criteria: str
+    count: int
+    stroke_rate: float
+    avg_risk_score: float
+
+
+class HighRiskProfilesResponse(BaseModel):
+    """Response model for high-risk profiles"""
+    profiles: List[HighRiskProfile]
 

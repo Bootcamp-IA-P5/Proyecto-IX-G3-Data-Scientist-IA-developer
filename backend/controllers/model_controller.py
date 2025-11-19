@@ -226,42 +226,83 @@ class ModelController:
             Confusion matrix as list of lists or None if cannot be calculated
         """
         try:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"🔧 Starting confusion matrix calculation for {model_name}")
+            
             # Load model
             model = model_service.load_model(model_name)
             if model is None:
+                logger.error(f"❌ Could not load model {model_name}")
                 return None
+            logger.info(f"✅ Model loaded: {type(model).__name__}")
             
             # Load test data
             import pickle
             from pathlib import Path
+            from backend.config import settings
             
-            # Try to load test data from backend/data or data/
+            # Try to load test data from multiple locations
+            # In Docker, working directory is /app, so paths are relative to that
+            # Priority: backend/data/ (copied in Docker), src/data/, data/
+            base_path = Path(__file__).parent.parent.parent  # From controller -> backend -> project root
+            current_dir = Path.cwd()  # Current working directory (could be /app in Docker)
+            
+            logger.info(f"📍 Path info: base_path={base_path}, current_dir={current_dir}, __file__={Path(__file__)}")
+            
             test_data_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "X_test_scaled.pkl",
-                Path(__file__).parent.parent.parent / "data" / "X_test_scaled.pkl",
+                Path("/app") / "data" / "X_test_scaled.pkl",  # Docker absolute path (raíz)
+                current_dir / "data" / "X_test_scaled.pkl",  # Relative to current dir (raíz)
+                base_path / "data" / "X_test_scaled.pkl",  # Relative to controller location (raíz)
+                Path("/app") / "backend" / "data" / "X_test_scaled.pkl",  # Docker backend/data/ (fallback)
+                current_dir / "backend" / "data" / "X_test_scaled.pkl",  # Relative backend/data/ (fallback)
+                base_path / "backend" / "data" / "X_test_scaled.pkl",  # Relative backend/data/ (fallback)
+                settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/ (fallback)
             ]
             
             y_test_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "y_test.pkl",
-                Path(__file__).parent.parent.parent / "data" / "y_test.pkl",
+                Path("/app") / "data" / "y_test.pkl",  # Docker absolute path (raíz)
+                current_dir / "data" / "y_test.pkl",  # Relative to current dir (raíz)
+                base_path / "data" / "y_test.pkl",  # Relative to controller location (raíz)
+                Path("/app") / "backend" / "data" / "y_test.pkl",  # Docker backend/data/ (fallback)
+                current_dir / "backend" / "data" / "y_test.pkl",  # Relative backend/data/ (fallback)
+                base_path / "backend" / "data" / "y_test.pkl",  # Relative backend/data/ (fallback)
+                settings.DATA_DIR / "y_test.pkl",  # src/data/ (fallback)
             ]
             
             X_test = None
             y_test = None
             
+            logger.info(f"🔍 Searching for X_test_scaled.pkl for {model_name}")
             for path in test_data_paths:
-                if path.exists():
+                exists = path.exists()
+                logger.info(f"   Trying: {path} (exists: {exists})")
+                if exists:
+                    logger.info(f"   ✅ Found X_test at: {path}")
                     with open(path, 'rb') as f:
                         X_test = pickle.load(f)
+                    logger.info(f"   ✅ Loaded X_test shape: {X_test.shape if hasattr(X_test, 'shape') else 'N/A'}")
                     break
             
+            logger.info(f"🔍 Searching for y_test.pkl for {model_name}")
             for path in y_test_paths:
-                if path.exists():
+                exists = path.exists()
+                logger.info(f"   Trying: {path} (exists: {exists})")
+                if exists:
+                    logger.info(f"   ✅ Found y_test at: {path}")
                     with open(path, 'rb') as f:
                         y_test = pickle.load(f)
+                    logger.info(f"   ✅ Loaded y_test shape: {y_test.shape if hasattr(y_test, 'shape') else len(y_test) if hasattr(y_test, '__len__') else 'N/A'}")
                     break
             
             if X_test is None or y_test is None:
+                # Log which paths were tried for debugging
+                logger.warning(f"⚠️  Could not find test data for {model_name}")
+                logger.warning(f"   Tried X_test paths: {[str(p) for p in test_data_paths]}")
+                logger.warning(f"   Tried y_test paths: {[str(p) for p in y_test_paths]}")
+                logger.warning(f"   Found: X_test={X_test is not None}, y_test={y_test is not None}")
+                logger.warning(f"   Current working directory: {Path.cwd()}")
+                logger.warning(f"   __file__ location: {Path(__file__)}")
                 return None
             
             # Get optimal threshold from results if available, otherwise use 0.5
@@ -318,8 +359,13 @@ class ModelController:
             return cm.tolist()
             
         except Exception as e:
-            # If calculation fails, return None (silent fail)
-            print(f"Warning: Could not calculate confusion matrix for {model_name}: {e}")
+            # If calculation fails, log the error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"❌ Could not calculate confusion matrix for {model_name}: {e}")
+            logger.error(f"   Error type: {type(e).__name__}")
+            import traceback
+            logger.error(f"   Traceback: {traceback.format_exc()}")
             return None
     
     @staticmethod
@@ -343,16 +389,32 @@ class ModelController:
             # Load test data
             import pickle
             from pathlib import Path
+            from backend.config import settings
             
-            # Try to load test data from backend/data or data/
+            # Try to load test data from multiple locations
+            # In Docker, working directory is /app, so paths are relative to that
+            # Priority: data/ (raíz, copiado en Docker), backend/data/, src/data/
+            base_path = Path(__file__).parent.parent.parent  # From controller -> backend -> project root
+            current_dir = Path.cwd()  # Current working directory (could be /app in Docker)
+            
             test_data_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "X_test_scaled.pkl",
-                Path(__file__).parent.parent.parent / "data" / "X_test_scaled.pkl",
+                Path("/app") / "data" / "X_test_scaled.pkl",  # Docker absolute path (raíz)
+                current_dir / "data" / "X_test_scaled.pkl",  # Relative to current dir (raíz)
+                base_path / "data" / "X_test_scaled.pkl",  # Relative to controller location (raíz)
+                Path("/app") / "backend" / "data" / "X_test_scaled.pkl",  # Docker backend/data/ (fallback)
+                current_dir / "backend" / "data" / "X_test_scaled.pkl",  # Relative backend/data/ (fallback)
+                base_path / "backend" / "data" / "X_test_scaled.pkl",  # Relative backend/data/ (fallback)
+                settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/ (fallback)
             ]
             
             y_test_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "y_test.pkl",
-                Path(__file__).parent.parent.parent / "data" / "y_test.pkl",
+                Path("/app") / "data" / "y_test.pkl",  # Docker absolute path (raíz)
+                current_dir / "data" / "y_test.pkl",  # Relative to current dir (raíz)
+                base_path / "data" / "y_test.pkl",  # Relative to controller location (raíz)
+                Path("/app") / "backend" / "data" / "y_test.pkl",  # Docker backend/data/ (fallback)
+                current_dir / "backend" / "data" / "y_test.pkl",  # Relative backend/data/ (fallback)
+                base_path / "backend" / "data" / "y_test.pkl",  # Relative backend/data/ (fallback)
+                settings.DATA_DIR / "y_test.pkl",  # src/data/ (fallback)
             ]
             
             X_test = None
@@ -371,6 +433,13 @@ class ModelController:
                     break
             
             if X_test is None or y_test is None:
+                # Log which paths were tried for debugging
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"⚠️  Could not find test data for {model_name}")
+                logger.warning(f"   Tried X_test paths: {[str(p) for p in test_data_paths]}")
+                logger.warning(f"   Tried y_test paths: {[str(p) for p in y_test_paths]}")
+                logger.warning(f"   Found: X_test={X_test is not None}, y_test={y_test is not None}")
                 return None, None
             
             # Make predictions - handle different model types
@@ -493,14 +562,26 @@ class ModelController:
         confusion_matrix = None
         optimal_threshold = None
         
-        # If confusion matrix not found in results, try to calculate it from model and test data
-        if confusion_matrix is None:
-            confusion_matrix = ModelController._calculate_confusion_matrix(model_name, results)
-        
-        # Calculate curves (ROC and Precision-Recall)
-        roc_curve_dict, precision_recall_curve_dict = ModelController._calculate_curves(model_name, results)
-        
+        # FIRST: Try to extract confusion matrix from results (priority: saved data)
         if results:
+            # Extract confusion matrix from results
+            # Try direct keys first
+            if "test_confusion_matrix" in results:
+                confusion_matrix = results["test_confusion_matrix"]
+            elif "confusion_matrix" in results:
+                confusion_matrix = results["confusion_matrix"]
+            elif "validation_confusion_matrix" in results:
+                confusion_matrix = results["validation_confusion_matrix"]
+            else:
+                # Try to find in nested metrics (e.g., performance_metrics_threshold_0.5, test_threshold_0.5)
+                for key in ["test_threshold_optimal", "test_threshold_0.5", 
+                           "validation_threshold_optimal", "validation_threshold_0.5",
+                           "performance_metrics_threshold_0.5", "performance_metrics_threshold_optimal"]:
+                    if key in results and isinstance(results[key], dict):
+                        if "confusion_matrix" in results[key]:
+                            confusion_matrix = results[key]["confusion_matrix"]
+                            break
+            
             # Extract feature importance
             if "feature_importance" in results:
                 feature_importance = results["feature_importance"]
@@ -529,29 +610,25 @@ class ModelController:
                             for i, imp in enumerate(importances)
                         ]
             
-            # Extract confusion matrix
-            # Try direct keys first
-            if "test_confusion_matrix" in results:
-                confusion_matrix = results["test_confusion_matrix"]
-            elif "confusion_matrix" in results:
-                confusion_matrix = results["confusion_matrix"]
-            elif "validation_confusion_matrix" in results:
-                confusion_matrix = results["validation_confusion_matrix"]
-            else:
-                # Try to find in nested metrics (e.g., performance_metrics_threshold_0.5, test_threshold_0.5)
-                for key in ["test_threshold_optimal", "test_threshold_0.5", 
-                           "validation_threshold_optimal", "validation_threshold_0.5",
-                           "performance_metrics_threshold_0.5", "performance_metrics_threshold_optimal"]:
-                    if key in results and isinstance(results[key], dict):
-                        if "confusion_matrix" in results[key]:
-                            confusion_matrix = results[key]["confusion_matrix"]
-                            break
-            
             # Extract optimal threshold
             if "optimal_threshold" in results:
                 optimal_threshold = results["optimal_threshold"]
             elif "best_threshold" in results:
                 optimal_threshold = results["best_threshold"]
+        
+        # SECOND: If confusion matrix not found in results, try to calculate it from model and test data
+        if confusion_matrix is None:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"📊 Calculating confusion matrix dynamically for {model_name}")
+            confusion_matrix = ModelController._calculate_confusion_matrix(model_name, results)
+            if confusion_matrix is not None:
+                logger.info(f"✅ Successfully calculated confusion matrix for {model_name}: {confusion_matrix}")
+            else:
+                logger.warning(f"⚠️  Failed to calculate confusion matrix for {model_name}")
+        
+        # Calculate curves (ROC and Precision-Recall)
+        roc_curve_dict, precision_recall_curve_dict = ModelController._calculate_curves(model_name, results)
         
         # Get features (from preprocessing service if available)
         features_required = None

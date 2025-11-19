@@ -101,7 +101,6 @@ class PredictController:
                 # Log error but don't fail the prediction
                 print(f"⚠️ Warning: Failed to save to database: {e}")
         
-        return PredictionResponse(
         response = PredictionResponse(
             prediction=int(prediction),
             probability=float(probability),
