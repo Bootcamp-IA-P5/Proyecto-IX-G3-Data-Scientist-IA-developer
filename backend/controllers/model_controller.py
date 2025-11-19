@@ -8,6 +8,7 @@ from typing import List, Optional, Dict, Any
 from pathlib import Path
 from backend.services.model_service import model_service
 from backend.schemas import ModelInfoResponse, ModelListResponse
+from backend.config import settings
 
 
 class ModelController:
@@ -235,15 +236,19 @@ class ModelController:
             import pickle
             from pathlib import Path
             
-            # Try to load test data from backend/data or data/
+            # Try to load test data from multiple locations
+            # Priority: backend/data/ (copied in Docker), src/data/, data/
+            base_path = Path(__file__).parent.parent.parent
             test_data_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "X_test_scaled.pkl",
-                Path(__file__).parent.parent.parent / "data" / "X_test_scaled.pkl",
+                base_path / "backend" / "data" / "X_test_scaled.pkl",  # backend/data/ (Docker)
+                settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/
+                base_path / "data" / "X_test_scaled.pkl",  # data/ (local)
             ]
             
             y_test_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "y_test.pkl",
-                Path(__file__).parent.parent.parent / "data" / "y_test.pkl",
+                base_path / "backend" / "data" / "y_test.pkl",  # backend/data/ (Docker)
+                settings.DATA_DIR / "y_test.pkl",  # src/data/
+                base_path / "data" / "y_test.pkl",  # data/ (local)
             ]
             
             X_test = None
@@ -344,15 +349,19 @@ class ModelController:
             import pickle
             from pathlib import Path
             
-            # Try to load test data from backend/data or data/
+            # Try to load test data from multiple locations
+            # Priority: backend/data/ (copied in Docker), src/data/, data/
+            base_path = Path(__file__).parent.parent.parent
             test_data_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "X_test_scaled.pkl",
-                Path(__file__).parent.parent.parent / "data" / "X_test_scaled.pkl",
+                base_path / "backend" / "data" / "X_test_scaled.pkl",  # backend/data/ (Docker)
+                settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/
+                base_path / "data" / "X_test_scaled.pkl",  # data/ (local)
             ]
             
             y_test_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "y_test.pkl",
-                Path(__file__).parent.parent.parent / "data" / "y_test.pkl",
+                base_path / "backend" / "data" / "y_test.pkl",  # backend/data/ (Docker)
+                settings.DATA_DIR / "y_test.pkl",  # src/data/
+                base_path / "data" / "y_test.pkl",  # data/ (local)
             ]
             
             X_test = None
