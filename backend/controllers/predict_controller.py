@@ -15,6 +15,7 @@ from backend.schemas import (
 from backend.services.model_service import model_service
 from backend.services.preprocessing_service import preprocessing_service
 from backend.database import crud
+from backend.services.stats_service import stats_service
 
 
 class PredictController:
@@ -101,11 +102,17 @@ class PredictController:
                 print(f"⚠️ Warning: Failed to save to database: {e}")
         
         return PredictionResponse(
+        response = PredictionResponse(
             prediction=int(prediction),
             probability=float(probability),
             model_used=final_model_name,
             confidence=confidence
         )
+        
+        # Store prediction for statistics
+        stats_service.add_prediction(response)
+        
+        return response
     
     @staticmethod
     def predict_batch(request: BatchPredictionRequest, db: Optional[Session] = None) -> BatchPredictionResponse:
@@ -178,11 +185,18 @@ class PredictController:
                 )
             )
         
-        return BatchPredictionResponse(
+        response = BatchPredictionResponse(
             predictions=predictions,
             total=len(predictions),
             model_used=final_model_name
         )
+        
+        # Store predictions for statistics
+        stats_service.add_batch_predictions(predictions)
+        
+        return response
+
+
 # Global instance
 predict_controller = PredictController()
 
