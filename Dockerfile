@@ -30,6 +30,7 @@ RUN pip install --upgrade pip setuptools wheel \
 COPY backend/ ./backend
 COPY models/ ./models
 COPY data/ ./data
+COPY src/ ./src
 COPY tests/ ./tests
 
 VOLUME ["/app/models"]
@@ -42,4 +43,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 ENV PYTHONPATH=/app
 
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Usar PORT de Render o 8000 por defecto
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+
