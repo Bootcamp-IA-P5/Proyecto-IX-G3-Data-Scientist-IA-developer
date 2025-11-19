@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 
 # Import configuration and routes
 from backend.config import settings
-from backend.routes import health, predict, model
+from backend.routes import health, predict, model, stats
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -28,6 +28,7 @@ app.add_middleware(
 app.include_router(health.router, tags=["Health"])
 app.include_router(predict.router, tags=["Prediction"])
 app.include_router(model.router, tags=["Models"])
+app.include_router(stats.router, tags=["Statistics"])
 
 
 @app.get("/")

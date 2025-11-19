@@ -23,6 +23,7 @@ class ModelService:
         """Initialize the model service"""
         self.models_cache: Dict[str, Any] = {}
         self.models_path = self._get_models_path()
+        self.data_path = self._get_data_path()
     
     def _get_models_path(self) -> Path:
         """
@@ -31,23 +32,23 @@ class ModelService:
         Returns:
             Path to models directory
         """
-        # Try different possible locations
-        possible_paths = [
-            Path(__file__).parent.parent.parent / "models",  # From backend/services/ -> models/
-            Path(__file__).parent.parent.parent / "backend" / "models",  # backend/models/
-            Path(__file__).parent.parent / "models",  # Alternative
-        ]
-        
-        for path in possible_paths:
-            if path.exists():
-                return path
-        
         # Default to models/ in project root
         return Path(__file__).parent.parent.parent / "models"
+    
+    def _get_data_path(self) -> Path:
+        """
+        Get the path to the data directory (where RF model might be)
+        
+        Returns:
+            Path to data directory
+        """
+        # Default to data/ in project root
+        return Path(__file__).parent.parent.parent / "data"
     
     def load_model(self, model_name: str) -> Optional[Any]:
         """
         Load a model from disk (with caching)
+        Searches in both models/ and data/ directories
         
         Args:
             model_name: Name of the model file (e.g., 'random_forest_model.pkl')
@@ -59,78 +60,69 @@ class ModelService:
         if model_name in self.models_cache:
             return self.models_cache[model_name]
         
-        # Try to load from disk
-        model_file = self.models_path / model_name
+        # Try to load from models/ first, then data/
+        possible_paths = [
+            self.models_path / model_name,
+            self.data_path / model_name
+        ]
         
-        if not model_file.exists():
-            return None
+        for model_file in possible_paths:
+            if model_file.exists():
+                try:
+                    model = joblib.load(model_file)
+                    self.models_cache[model_name] = model
+                    return model
+                except Exception as e:
+                    print(f"Error loading model {model_name} from {model_file}: {e}")
+                    continue
         
-        try:
-            model = joblib.load(model_file)
-            self.models_cache[model_name] = model
-            return model
-        except Exception as e:
-            print(f"Error loading model {model_name}: {e}")
-            return None
+        return None
     
     def get_available_models(self) -> list:
         """
         Get list of available model files
+        Searches in both models/ and data/ directories
         
         Returns:
             List of model filenames
         """
-        if not self.models_path.exists():
-            return []
-        
         # Exclude patterns (files that are NOT models)
         exclude_patterns = ["params", "results", "scaler", "best_params", "_results", "_scaler"]
         
-        # Find all .pkl files that are models
+        # Find all .pkl files that are models in both directories
         model_files = []
-        for f in self.models_path.glob("*.pkl"):
-            name_lower = f.name.lower()
-            # Skip if contains exclude patterns
-            if any(pattern in name_lower for pattern in exclude_patterns):
-                continue
-            
-            # Include if:
-            # 1. Contains "model" in name, OR
-            # 2. Starts with "rf_" and is not params/results (Random Forest), OR
-            # 3. Starts with "random_forest", OR
-            # 4. Matches common model naming patterns
-            if ("model" in name_lower or 
-                (name_lower.startswith("rf_") and not any(ex in name_lower for ex in exclude_patterns)) or
-                name_lower.startswith("random_forest")):
-                model_files.append(f.name)
+        search_paths = []
         
-        # Check if Random Forest model exists with different names
-        rf_model_names = ["random_forest_model.pkl", "rf_model.pkl"]
-        for rf_name in rf_model_names:
-            if (self.models_path / rf_name).exists() and rf_name not in model_files:
-                model_files.append(rf_name)
+        if self.models_path.exists():
+            search_paths.append(self.models_path)
+        if self.data_path.exists():
+            search_paths.append(self.data_path)
         
-        # If we have rf_best_params or rf_results but no model file,
-        # it means RF was trained but model file might be missing
-        # Check for RF indicators
-        has_rf_params = (self.models_path / "rf_best_params.pkl").exists()
-        has_rf_results = (self.models_path / "rf_results.pkl").exists()
-        
-        # If RF params/results exist but no model file, add expected name
-        if (has_rf_params or has_rf_results) and not any("random_forest" in m.lower() or m.startswith("rf_") for m in model_files):
-            # Try to find if model exists with any name
-            rf_model_found = False
-            for f in self.models_path.glob("*.pkl"):
-                if "rf" in f.name.lower() and not any(ex in f.name.lower() for ex in exclude_patterns):
+        for search_path in search_paths:
+            for f in search_path.glob("*.pkl"):
+                name_lower = f.name.lower()
+                # Skip if contains exclude patterns
+                if any(pattern in name_lower for pattern in exclude_patterns):
+                    continue
+                
+                # Include if:
+                # 1. Contains "model" in name, OR
+                # 2. Starts with "rf_" and is not params/results (Random Forest), OR
+                # 3. Starts with "random_forest", OR
+                # 4. Matches common model naming patterns
+                if ("model" in name_lower or 
+                    (name_lower.startswith("rf_") and not any(ex in name_lower for ex in exclude_patterns)) or
+                    name_lower.startswith("random_forest")):
                     if f.name not in model_files:
                         model_files.append(f.name)
-                        rf_model_found = True
-                        break
-            
-            # If still not found, add expected name (even if file doesn't exist)
-            # This helps identify that RF should be available
-            if not rf_model_found:
-                model_files.append("random_forest_model.pkl")
+        
+        # Check for Random Forest in data/ directory
+        rf_model_names = ["random_forest_model.pkl", "rf_model.pkl"]
+        for rf_name in rf_model_names:
+            if (self.data_path / rf_name).exists() and rf_name not in model_files:
+                model_files.append(rf_name)
+            if (self.models_path / rf_name).exists() and rf_name not in model_files:
+                model_files.append(rf_name)
         
         return sorted(model_files)
 
