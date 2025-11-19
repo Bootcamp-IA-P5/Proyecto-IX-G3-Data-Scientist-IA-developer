@@ -234,16 +234,21 @@ class ModelController:
             # Load test data
             import pickle
             from pathlib import Path
+            from backend.config import settings
             
-            # Try to load test data from backend/data or data/
+            # Try to load test data from multiple locations
+            # Priority: backend/data/ (copied in Docker), src/data/, data/
+            base_path = Path(__file__).parent.parent.parent
             test_data_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "X_test_scaled.pkl",
-                Path(__file__).parent.parent.parent / "data" / "X_test_scaled.pkl",
+                base_path / "backend" / "data" / "X_test_scaled.pkl",  # backend/data/ (Docker)
+                settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/
+                base_path / "data" / "X_test_scaled.pkl",  # data/ (local)
             ]
             
             y_test_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "y_test.pkl",
-                Path(__file__).parent.parent.parent / "data" / "y_test.pkl",
+                base_path / "backend" / "data" / "y_test.pkl",  # backend/data/ (Docker)
+                settings.DATA_DIR / "y_test.pkl",  # src/data/
+                base_path / "data" / "y_test.pkl",  # data/ (local)
             ]
             
             X_test = None
@@ -343,16 +348,21 @@ class ModelController:
             # Load test data
             import pickle
             from pathlib import Path
+            from backend.config import settings
             
-            # Try to load test data from backend/data or data/
+            # Try to load test data from multiple locations
+            # Priority: backend/data/ (copied in Docker), src/data/, data/
+            base_path = Path(__file__).parent.parent.parent
             test_data_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "X_test_scaled.pkl",
-                Path(__file__).parent.parent.parent / "data" / "X_test_scaled.pkl",
+                base_path / "backend" / "data" / "X_test_scaled.pkl",  # backend/data/ (Docker)
+                settings.DATA_DIR / "X_test_scaled.pkl",  # src/data/
+                base_path / "data" / "X_test_scaled.pkl",  # data/ (local)
             ]
             
             y_test_paths = [
-                Path(__file__).parent.parent.parent / "backend" / "data" / "y_test.pkl",
-                Path(__file__).parent.parent.parent / "data" / "y_test.pkl",
+                base_path / "backend" / "data" / "y_test.pkl",  # backend/data/ (Docker)
+                settings.DATA_DIR / "y_test.pkl",  # src/data/
+                base_path / "data" / "y_test.pkl",  # data/ (local)
             ]
             
             X_test = None
@@ -493,14 +503,26 @@ class ModelController:
         confusion_matrix = None
         optimal_threshold = None
         
-        # If confusion matrix not found in results, try to calculate it from model and test data
-        if confusion_matrix is None:
-            confusion_matrix = ModelController._calculate_confusion_matrix(model_name, results)
-        
-        # Calculate curves (ROC and Precision-Recall)
-        roc_curve_dict, precision_recall_curve_dict = ModelController._calculate_curves(model_name, results)
-        
+        # FIRST: Try to extract confusion matrix from results (priority: saved data)
         if results:
+            # Extract confusion matrix from results
+            # Try direct keys first
+            if "test_confusion_matrix" in results:
+                confusion_matrix = results["test_confusion_matrix"]
+            elif "confusion_matrix" in results:
+                confusion_matrix = results["confusion_matrix"]
+            elif "validation_confusion_matrix" in results:
+                confusion_matrix = results["validation_confusion_matrix"]
+            else:
+                # Try to find in nested metrics (e.g., performance_metrics_threshold_0.5, test_threshold_0.5)
+                for key in ["test_threshold_optimal", "test_threshold_0.5", 
+                           "validation_threshold_optimal", "validation_threshold_0.5",
+                           "performance_metrics_threshold_0.5", "performance_metrics_threshold_optimal"]:
+                    if key in results and isinstance(results[key], dict):
+                        if "confusion_matrix" in results[key]:
+                            confusion_matrix = results[key]["confusion_matrix"]
+                            break
+            
             # Extract feature importance
             if "feature_importance" in results:
                 feature_importance = results["feature_importance"]
@@ -529,29 +551,18 @@ class ModelController:
                             for i, imp in enumerate(importances)
                         ]
             
-            # Extract confusion matrix
-            # Try direct keys first
-            if "test_confusion_matrix" in results:
-                confusion_matrix = results["test_confusion_matrix"]
-            elif "confusion_matrix" in results:
-                confusion_matrix = results["confusion_matrix"]
-            elif "validation_confusion_matrix" in results:
-                confusion_matrix = results["validation_confusion_matrix"]
-            else:
-                # Try to find in nested metrics (e.g., performance_metrics_threshold_0.5, test_threshold_0.5)
-                for key in ["test_threshold_optimal", "test_threshold_0.5", 
-                           "validation_threshold_optimal", "validation_threshold_0.5",
-                           "performance_metrics_threshold_0.5", "performance_metrics_threshold_optimal"]:
-                    if key in results and isinstance(results[key], dict):
-                        if "confusion_matrix" in results[key]:
-                            confusion_matrix = results[key]["confusion_matrix"]
-                            break
-            
             # Extract optimal threshold
             if "optimal_threshold" in results:
                 optimal_threshold = results["optimal_threshold"]
             elif "best_threshold" in results:
                 optimal_threshold = results["best_threshold"]
+        
+        # SECOND: If confusion matrix not found in results, try to calculate it from model and test data
+        if confusion_matrix is None:
+            confusion_matrix = ModelController._calculate_confusion_matrix(model_name, results)
+        
+        # Calculate curves (ROC and Precision-Recall)
+        roc_curve_dict, precision_recall_curve_dict = ModelController._calculate_curves(model_name, results)
         
         # Get features (from preprocessing service if available)
         features_required = None
