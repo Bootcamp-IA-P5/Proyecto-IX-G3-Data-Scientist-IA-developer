@@ -1,6 +1,26 @@
-version: '3.8'
-
 services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: stroke-db
+    environment:
+      - POSTGRES_USER=stroke_user
+      - POSTGRES_PASSWORD=stroke_pass
+      - POSTGRES_DB=stroke_predictions_db
+    ports:
+      - "5432:5432"  # Expuesto para desarrollo local
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - stroke-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stroke_user -d stroke_predictions_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
   # Backend API - FastAPI
   backend:
     build:
@@ -12,8 +32,12 @@ services:
       - ./models:/app/models:ro  # Montamos modelos como solo lectura
     environment:
       - ENVIRONMENT=development
+      - DATABASE_URL=postgresql://stroke_user:stroke_pass@db:5432/stroke_predictions_db
     networks:
       - stroke-network
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -55,10 +79,32 @@ services:
     profiles:
       - production  # Solo se ejecuta con --profile production
 
+  # pgAdmin - Herramienta visual para PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: stroke-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@stroke.com
+      - PGADMIN_DEFAULT_PASSWORD=admin123
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    ports:
+      - "5050:80"  # Acceso web en http://localhost:5050
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - stroke-network
+    depends_on:
+      - db
+    restart: unless-stopped
+
 networks:
   stroke-network:
     driver: bridge
 
 volumes:
+  postgres-data:  # Volumen para persistencia de PostgreSQL
+    driver: local
   models-data:
+    driver: local
+  pgadmin-data:  # Volumen para persistencia de pgAdmin
     driver: local

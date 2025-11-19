@@ -5,6 +5,7 @@ Handles prediction logic and coordinates with model service.
 """
 from typing import List, Optional
 import numpy as np
+from sqlalchemy.orm import Session
 from backend.schemas import (
     PredictionRequest,
     PredictionResponse,
@@ -13,6 +14,7 @@ from backend.schemas import (
 )
 from backend.services.model_service import model_service
 from backend.services.preprocessing_service import preprocessing_service
+from backend.database import crud
 from backend.services.stats_service import stats_service
 
 
@@ -23,13 +25,12 @@ class PredictController:
     def _calculate_confidence(probability: float) -> str:
         """
         Calculate confidence level based on probability
-        
         Args:
-            probability: Prediction probability
-            
+            probability: Prediction probability 
         Returns:
             Confidence level string
         """
+        
         if probability < 0.3 or probability > 0.7:
             return "High"
         elif 0.3 <= probability < 0.4 or 0.6 < probability <= 0.7:
@@ -38,17 +39,19 @@ class PredictController:
             return "Low"
     
     @staticmethod
-    def predict_single(request: PredictionRequest, model_name: Optional[str] = None) -> PredictionResponse:
+    def predict_single(
+        request: PredictionRequest, 
+        model_name: Optional[str] = None,
+        db: Optional[Session] = None
+    ) -> PredictionResponse:
         """
         Make a single prediction
-        
         Args:
             request: Prediction request with patient data
             model_name: Optional specific model to use
-            
+            db: Database session (optional, if provided will save to DB)
         Returns:
             PredictionResponse with prediction results
-            
         Raises:
             ValueError: If model is not found or prediction fails
         """
@@ -79,6 +82,26 @@ class PredictController:
         # Calculate confidence
         confidence = PredictController._calculate_confidence(probability)
         
+        # 💾 Save to database if session provided
+        if db is not None:
+            try:
+                # 1. Save patient data
+                patient = crud.create_patient_data(db, request)
+                
+                # 2. Save prediction result
+                crud.create_prediction(
+                    db=db,
+                    patient_data_id=patient.id,
+                    model_name=final_model_name,
+                    prediction=prediction,
+                    probability=float(probability),
+                    risk_level=confidence
+                )
+            except Exception as e:
+                # Log error but don't fail the prediction
+                print(f"⚠️ Warning: Failed to save to database: {e}")
+        
+        return PredictionResponse(
         response = PredictionResponse(
             prediction=int(prediction),
             probability=float(probability),
@@ -92,12 +115,13 @@ class PredictController:
         return response
     
     @staticmethod
-    def predict_batch(request: BatchPredictionRequest) -> BatchPredictionResponse:
+    def predict_batch(request: BatchPredictionRequest, db: Optional[Session] = None) -> BatchPredictionResponse:
         """
         Make batch predictions
         
         Args:
             request: Batch prediction request with list of patient data
+            db: Database session (optional, if provided will save to DB)
             
         Returns:
             BatchPredictionResponse with list of predictions
@@ -130,15 +154,36 @@ class PredictController:
             raise ValueError(f"Error making batch predictions: {str(e)}")
         
         # Build response list
-        predictions = [
-            PredictionResponse(
-                prediction=int(pred),
-                probability=float(prob),
-                model_used=final_model_name,
-                confidence=PredictController._calculate_confidence(prob)
+        predictions = []
+        for i, (pred, prob) in enumerate(zip(predictions_binary, probabilities)):
+            confidence = PredictController._calculate_confidence(prob)
+            
+            # 💾 Save to database if session provided
+            if db is not None:
+                try:
+                    # 1. Save patient data
+                    patient = crud.create_patient_data(db, request.data[i])
+                    
+                    # 2. Save prediction result
+                    crud.create_prediction(
+                        db=db,
+                        patient_data_id=patient.id,
+                        model_name=final_model_name,
+                        prediction=int(pred),
+                        probability=float(prob),
+                        risk_level=confidence
+                    )
+                except Exception as e:
+                    print(f"⚠️ Warning: Failed to save batch prediction {i} to database: {e}")
+            
+            predictions.append(
+                PredictionResponse(
+                    prediction=int(pred),
+                    probability=float(prob),
+                    model_used=final_model_name,
+                    confidence=confidence
+                )
             )
-            for pred, prob in zip(predictions_binary, probabilities)
-        ]
         
         response = BatchPredictionResponse(
             predictions=predictions,
