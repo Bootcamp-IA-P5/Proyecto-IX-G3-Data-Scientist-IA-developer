@@ -25,3 +25,11 @@ mlflow==3.6.0
 # Utilities
 python-multipart==0.0.6  # For file uploads
 python-dotenv==1.0.0  # For environment variables
+
+# Database
+sqlalchemy==2.0.23  # ORM para gestión de base de datos
+psycopg2-binary==2.9.9  # Driver PostgreSQL
+alembic==1.13.1  # Migraciones de base de datos
+# Unit test
+pytest==7.4.3
+httpx==0.25.2
