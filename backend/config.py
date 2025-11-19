@@ -30,23 +30,46 @@ class Settings(BaseSettings):
         # Read from environment variable directly
         cors_env = os.getenv("CORS_ORIGINS", "")
         
+        # Default origins
+        default_origins = [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+            "https://proyecto-ix-g3-data-scientist-ia.onrender.com",  # Production frontend (without trailing slash)
+        ]
+        
         if not cors_env.strip():
-            # Return default origins if empty
-            return [
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://127.0.0.1:3000",
-                "http://127.0.0.1:5173",
-                "https://proyecto-ix-g3-data-scientist-ia.onrender.com",  # Production frontend
-            ]
+            return default_origins
         
         # Split by comma and strip whitespace
         origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
-        # Always include production frontend if not already present
+        
+        # Normalize URLs: remove trailing slashes and add both versions
+        normalized_origins = []
+        for origin in origins:
+            # Remove trailing slash
+            origin_clean = origin.rstrip("/")
+            if origin_clean not in normalized_origins:
+                normalized_origins.append(origin_clean)
+            # Also add version with trailing slash for compatibility
+            origin_with_slash = origin_clean + "/"
+            if origin_with_slash not in normalized_origins:
+                normalized_origins.append(origin_with_slash)
+        
+        # Always include production frontend (with and without trailing slash)
         default_prod = "https://proyecto-ix-g3-data-scientist-ia.onrender.com"
-        if default_prod not in origins:
-            origins.append(default_prod)
-        return origins
+        if default_prod not in normalized_origins:
+            normalized_origins.append(default_prod)
+            normalized_origins.append(default_prod + "/")
+        
+        # Add localhost origins if not in production
+        if os.getenv("ENVIRONMENT", "development") == "development":
+            for local_origin in default_origins:
+                if local_origin not in normalized_origins:
+                    normalized_origins.append(local_origin)
+        
+        return normalized_origins
     
     # Model Settings
     MODELS_DIR: Path = Path(__file__).parent.parent / "models"

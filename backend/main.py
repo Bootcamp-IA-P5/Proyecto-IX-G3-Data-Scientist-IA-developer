@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import logging
 
 # Import configuration and routes
 from backend.config import settings
@@ -15,10 +16,16 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# Log CORS origins for debugging
+cors_origins = settings.CORS_ORIGINS
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.info(f"🌐 CORS Origins configured: {cors_origins}")
+
 # Configure CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
