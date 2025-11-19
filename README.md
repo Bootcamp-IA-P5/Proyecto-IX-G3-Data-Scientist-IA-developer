@@ -606,5 +606,4 @@ Este proyecto es parte del Bootcamp IA P5.
 
 ---
 
-**Versión**: 1.0.0  
-**Última actualización**: Enero 2025
+
