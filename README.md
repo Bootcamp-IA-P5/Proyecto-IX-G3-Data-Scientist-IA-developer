@@ -9,7 +9,7 @@ Sistema de predicción de ictus (stroke) utilizando Machine Learning con modelos
 - **API Documentation (Swagger)**: [https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com/docs](https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com/docs)
 - **Repositorio Frontend**: [https://github.com/Bootcamp-IA-P5/Proyecto-IX-G3-Data-Scientist-IA-developer--Frontend](https://github.com/Bootcamp-IA-P5/Proyecto-IX-G3-Data-Scientist-IA-developer--Frontend)
 
-## 📋 Tabla de Contenidos
+## 📊 Executive Summary
 
 - [Descripción](#-descripción)
 - [Arquitectura del Sistema](#-arquitectura-del-sistema)
