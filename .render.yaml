@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: stroke-prediction-api
+    runtime: docker
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      # DATABASE_URL debe configurarse en el dashboard de Render
+      # CORS_ORIGINS debe configurarse en el dashboard de Render
+    autoDeploy: true
+
