@@ -25,3 +25,7 @@ mlflow==3.6.0
 # Utilities
 python-multipart==0.0.6  # For file uploads
 python-dotenv==1.0.0  # For environment variables
+
+# Unit test
+pytest==7.4.3
+httpx==0.25.2
