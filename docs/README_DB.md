@@ -279,6 +279,134 @@ alembic==1.13.1
 - [ ] Add audit logging table
 - [ ] Implement database connection pooling configuration
 
+## Production Deployment
+
+### Managed Database Services (Recommended)
+
+#### Option 1: Render.com (Easy & Free Tier Available)
+
+1. Create account at https://render.com
+2. Click **New +** → **PostgreSQL**
+3. Configure:
+   - Name: `stroke-predictions-db`
+   - Database: `stroke_predictions_db`
+   - User: `stroke_user`
+   - Region: Choose closest to your backend
+   - Plan: **Free** or **Starter ($7/mo)**
+
+4. Copy the **External Database URL**:
+   ```
+   postgresql://user:password@dpg-xxxxx.oregon-postgres.render.com/dbname
+   ```
+
+5. Update your production `.env`:
+   ```env
+   ENVIRONMENT=production
+   DEBUG=False
+   DATABASE_URL=postgresql://user:password@dpg-xxxxx.oregon-postgres.render.com/dbname
+   ```
+
+#### Option 2: Supabase (PostgreSQL + Extras)
+
+1. Create account at https://supabase.com
+2. Create new project
+3. Get connection string from Project Settings → Database
+4. Use in `.env`:
+   ```env
+   DATABASE_URL=postgresql://postgres:password@db.xxxxx.supabase.co:5432/postgres
+   ```
+
+**Benefits:** Built-in REST API, Auth, Storage, Real-time subscriptions
+
+#### Option 3: AWS RDS
+
+1. Create PostgreSQL instance in AWS RDS
+2. Configure security groups (allow your backend IP)
+3. Get endpoint URL
+4. Use in `.env`:
+   ```env
+   DATABASE_URL=postgresql://user:password@mydb.xxxxx.us-east-1.rds.amazonaws.com:5432/dbname
+   ```
+
+#### Option 4: Railway (Developer-Friendly)
+
+1. Create account at https://railway.app
+2. Click **New Project** → **Provision PostgreSQL**
+3. Copy connection string from **Connect** tab
+4. Update `.env`
+
+### Docker Deployment (VPS)
+
+Deploy the entire stack using Docker Compose on:
+- **DigitalOcean Droplet** (~$6/month)
+- **Linode** (~$5/month)
+- **Hetzner** (~€4/month)
+
+```bash
+# On your VPS
+git clone https://github.com/your-org/stroke-prediction.git
+cd stroke-prediction
+
+# Create production .env
+cp .env.production.example .env
+# Edit .env with your settings
+
+# Start services
+docker compose up -d db backend
+```
+
+### Environment Configuration
+
+**Development (.env):**
+```env
+ENVIRONMENT=development
+DEBUG=True
+DATABASE_URL=postgresql://stroke_user:stroke_pass@127.0.0.1:5432/stroke_predictions_db
+```
+
+**Production (.env):**
+```env
+ENVIRONMENT=production
+DEBUG=False
+DATABASE_URL=postgresql://user:password@production-host:5432/dbname
+```
+
+### Database Migration
+
+When deploying to production, tables are created automatically on first use, or you can run:
+
+```bash
+# From your deployed backend
+python -c "from backend.database.connection import init_db; init_db()"
+```
+
+For future schema changes, consider using **Alembic** for proper migrations.
+
+### Security Considerations for Production
+
+1. **Use strong passwords** - Never use default passwords in production
+2. **Enable SSL** - Use `?sslmode=require` in connection string
+3. **Limit connections** - Configure `max_connections` appropriately
+4. **Regular backups** - Most managed services do this automatically
+5. **Monitor performance** - Use pgAdmin or cloud provider dashboards
+6. **Update CORS_ORIGINS** - Only allow your frontend domain
+
+Example production DATABASE_URL with SSL:
+```env
+DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
+```
+
+## Future Improvements
+
+- [ ] Implement Alembic migrations for production
+- [ ] Add database indexes for query optimization
+- [ ] Implement soft deletes with `deleted_at` timestamp
+- [ ] Add data validation constraints
+- [ ] Create database views for common queries
+- [ ] Implement caching layer (Redis)
+- [ ] Add audit logging table
+- [ ] Implement database connection pooling configuration
+
 ## Troubleshooting
 
 ### Port Conflict (5432)

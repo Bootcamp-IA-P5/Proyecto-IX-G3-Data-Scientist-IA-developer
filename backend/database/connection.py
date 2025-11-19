@@ -4,8 +4,7 @@ PostgreSQL connection configuration with SQLAlchemy.
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
-from dotenv import load_dotenv
+from backend.config import settings
 
 load_dotenv()
 
@@ -26,7 +25,7 @@ if DATABASE_URL.startswith("sqlite"):
 
 engine = create_engine(
     DATABASE_URL,
-    echo=True,  # Change to False in production
+    echo=settings.DEBUG,  # Only log SQL queries in debug mode
     pool_pre_ping=True,  # Verifies connections before using them
     connect_args=connect_args
 )
