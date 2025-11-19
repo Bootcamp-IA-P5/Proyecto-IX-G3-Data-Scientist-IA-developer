@@ -30,6 +30,8 @@ class ModelComparisonResponse(BaseModel):
 
 class DashboardResponse(BaseModel):
     """Response model for dashboard - combines all relevant information"""
+    model_config = {"protected_namespaces": ()}
+    
     # System status
     api_status: str
     models_loaded: int
