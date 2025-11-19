@@ -13,6 +13,7 @@ from backend.schemas import (
 )
 from backend.services.model_service import model_service
 from backend.services.preprocessing_service import preprocessing_service
+from backend.services.stats_service import stats_service
 
 
 class PredictController:
@@ -78,12 +79,17 @@ class PredictController:
         # Calculate confidence
         confidence = PredictController._calculate_confidence(probability)
         
-        return PredictionResponse(
+        response = PredictionResponse(
             prediction=int(prediction),
             probability=float(probability),
             model_used=final_model_name,
             confidence=confidence
         )
+        
+        # Store prediction for statistics
+        stats_service.add_prediction(response)
+        
+        return response
     
     @staticmethod
     def predict_batch(request: BatchPredictionRequest) -> BatchPredictionResponse:
@@ -134,11 +140,16 @@ class PredictController:
             for pred, prob in zip(predictions_binary, probabilities)
         ]
         
-        return BatchPredictionResponse(
+        response = BatchPredictionResponse(
             predictions=predictions,
             total=len(predictions),
             model_used=final_model_name
         )
+        
+        # Store predictions for statistics
+        stats_service.add_batch_predictions(predictions)
+        
+        return response
 
 
 # Global instance

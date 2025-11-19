@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from backend.controllers.health_controller import health_controller
-from backend.schemas import HealthResponse, StatusResponse
+from backend.schemas import HealthResponse, StatusResponse, ControlCenterResponse
 
 router = APIRouter()
 
@@ -25,3 +25,22 @@ async def get_status() -> StatusResponse:
         StatusResponse with system information
     """
     return health_controller.get_status()
+
+
+@router.get("/control-center", response_model=ControlCenterResponse)
+async def get_control_center() -> ControlCenterResponse:
+    """
+    Get comprehensive control center information
+    
+    Returns detailed system status including:
+    - Component health (API, Models, Services, Storage)
+    - Model health information
+    - System resources
+    - Performance metrics
+    - Alerts and warnings
+    - Configuration
+    
+    Returns:
+        ControlCenterResponse with comprehensive system information
+    """
+    return health_controller.get_control_center()
