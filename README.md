@@ -1,239 +1,610 @@
-# 🏥 Stroke Prediction - Machine Learning Project
+# 🏥 Stroke Prediction API - Proyecto IX G3
 
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://docker.com)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109.0-green)](https://fastapi.tiangolo.com)
-[![Python](https://img.shields.io/badge/Python-3.11-blue)](https://python.org)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+Sistema de predicción de ictus (stroke) utilizando Machine Learning con modelos de Regresión Logística, Random Forest y XGBoost. API REST desarrollada con FastAPI y frontend en React + TypeScript.
 
-Sistema completo de predicción de accidentes cerebrovasculares (stroke) utilizando machine learning, con API REST, interfaz web y contenedorización completa.
+## 🌐 Enlaces de Deployment
+
+- **Frontend (React)**: [https://proyecto-ix-g3-data-scientist-ia.onrender.com/](https://proyecto-ix-g3-data-scientist-ia.onrender.com/)
+- **Backend API (FastAPI)**: [https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com](https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com)
+- **API Documentation (Swagger)**: [https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com/docs](https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com/docs)
+- **Repositorio Frontend**: [https://github.com/Bootcamp-IA-P5/Proyecto-IX-G3-Data-Scientist-IA-developer--Frontend](https://github.com/Bootcamp-IA-P5/Proyecto-IX-G3-Data-Scientist-IA-developer--Frontend)
 
 ## 📋 Tabla de Contenidos
 
-- [🏗️ Arquitectura](#-arquitectura)
-- [✨ Características](#-características)
-- [🚀 Instalación](#-instalación)
-- [🐳 Docker](#-docker)
-- [📖 Uso de la API](#-uso-de-la-api)
-- [🔧 Desarrollo](#-desarrollo)
-- [📊 Modelos Disponibles](#-modelos-disponibles)
-- [🤝 Contribución](#-contribución)
-- [📄 Licencia](#-licencia)
+- [Descripción](#-descripción)
+- [Arquitectura del Sistema](#-arquitectura-del-sistema)
+- [Tecnologías Utilizadas](#-tecnologías-utilizadas)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Endpoints de la API](#-endpoints-de-la-api)
+- [Base de Datos](#-base-de-datos)
+- [Modelos de Machine Learning](#-modelos-de-machine-learning)
+- [MLflow](#-mlflow)
+- [Instalación y Configuración](#-instalación-y-configuración)
+- [Deployment](#-deployment)
+- [Uso de la API](#-uso-de-la-api)
 
-## 🏗️ Arquitectura
+## 🎯 Descripción
 
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Nginx Proxy   │    │   Backend API   │
-│   (React/TypeScript) │◄──►│   (Port 80)    │◄──►│   (FastAPI)    │
-│   (Port 3000)   │    │                 │    │   (Port 8000)   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-│                       │                       │
-└───────────────────────┼───────────────────────┘
-▼
-┌─────────────────┐
-│   ML Models     │
-│   (Scikit-learn)│
-└─────────────────┘
+Este proyecto implementa un sistema completo de predicción de ictus cerebral utilizando técnicas de Machine Learning. El sistema permite:
 
+- **Predicción individual**: Evaluar el riesgo de ictus de un paciente basándose en características demográficas y clínicas
+- **Predicción por lotes**: Procesar múltiples pacientes simultáneamente
+- **Análisis estadístico**: Visualizar estadísticas del dataset, correlaciones y perfiles de alto riesgo
+- **Comparación de modelos**: Evaluar y comparar el rendimiento de diferentes modelos ML
+- **Monitoreo del sistema**: Dashboard de control con métricas en tiempo real
 
-### Componentes
+## 🏗️ Arquitectura del Sistema
 
-- **Backend (FastAPI)**: API REST con modelos de machine learning
-- **Frontend (React/TypeScript)**: Interfaz web para predicciones
-- **Nginx**: Proxy reverso y balanceo de carga
-- **Docker**: Contenedorización completa del sistema
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         FRONTEND (React)                         │
+│  https://proyecto-ix-g3-data-scientist-ia.onrender.com/         │
+└────────────────────────────┬────────────────────────────────────┘
+                              │ HTTPS/REST API
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    BACKEND API (FastAPI)                         │
+│  https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com     │
+│                                                                   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │   Routes     │  │ Controllers  │  │  Services    │          │
+│  │              │  │              │  │              │          │
+│  │ - health     │→ │ - health     │→ │ - model      │          │
+│  │ - predict    │  │ - predict    │  │ - stats      │          │
+│  │ - model      │  │ - model      │  │ - dataset    │          │
+│  │ - stats      │  │ - stats      │  │ - preprocess │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+│         │                  │                  │                  │
+│         └──────────────────┼──────────────────┘                 │
+│                            │                                    │
+│                            ▼                                    │
+│  ┌──────────────────────────────────────────────┐              │
+│  │         Machine Learning Models              │              │
+│  │  - Logistic Regression (default)              │              │
+│  │  - Random Forest                             │              │
+│  │  - XGBoost                                   │              │
+│  └──────────────────────────────────────────────┘              │
+└────────────────────────────┬────────────────────────────────────┘
+                              │
+                    ┌─────────┴─────────┐
+                    │                   │
+                    ▼                   ▼
+        ┌──────────────────┐  ┌──────────────────┐
+        │  PostgreSQL DB    │  │   MLflow (Local) │
+        │  - patient_data   │  │   - Experiments │
+        │  - predictions    │  │   - Models      │
+        └──────────────────┘  └──────────────────┘
+```
 
-## ✨ Características
+### Flujo de Datos
 
-- 🔬 **Modelos de ML**: Regresión Logística, Random Forest, XGBoost
-- 📊 **Preprocesamiento**: Feature engineering y normalización automática
-- 🔄 **API REST**: Endpoints para predicciones individuales y batch
-- 🐳 **Docker Ready**: Despliegue completo con un comando
-- 📚 **Documentación**: API docs automática con Swagger/OpenAPI
-- 🏥 **Médico**: Enfoque en predicción de stroke con features clínicas
-- ⚡ **Alta Performance**: Modelos optimizados y cache inteligente
+1. **Frontend** → Usuario ingresa datos del paciente
+2. **API Route** → Recibe request HTTP y valida con Pydantic schemas
+3. **Controller** → Orquesta la lógica de negocio
+4. **Service** → Preprocesa datos y carga modelo ML
+5. **Modelo ML** → Genera predicción y probabilidad
+6. **Database** → Guarda datos del paciente y predicción
+7. **Response** → Retorna resultado al frontend
 
-## 🚀 Instalación
+## 🛠️ Tecnologías Utilizadas
 
-### Prerrequisitos
+### Backend
+- **FastAPI 0.109.0**: Framework web moderno y rápido
+- **Python 3.11**: Lenguaje de programación
+- **Uvicorn**: Servidor ASGI de alto rendimiento
+- **Pydantic 2.5.3**: Validación de datos y configuración
 
-- Docker y Docker Compose
-- 4GB RAM mínimo
-- 2GB espacio en disco
+### Machine Learning
+- **scikit-learn 1.7.2**: Algoritmos ML (Logistic Regression, Random Forest)
+- **XGBoost 2.0.3**: Gradient boosting avanzado
+- **Optuna 3.2.0**: Optimización de hiperparámetros
+- **imbalanced-learn 0.14.0**: SMOTE para balanceo de clases
+- **MLflow 3.6.0**: Tracking de experimentos y modelos
 
-### Instalación Rápida
+### Base de Datos
+- **PostgreSQL**: Base de datos relacional (producción)
+- **SQLite**: Base de datos local (desarrollo)
+- **SQLAlchemy 2.0.23**: ORM para gestión de base de datos
+- **Alembic 1.13.1**: Migraciones de base de datos
+
+### Data Processing
+- **pandas 2.2.0**: Manipulación y análisis de datos
+- **numpy 1.26.4**: Computación numérica
+- **joblib 1.3.2**: Serialización de modelos
+
+### Deployment
+- **Docker**: Containerización
+- **Render**: Plataforma de deployment (PaaS)
+- **Nginx**: Servidor web (frontend)
+
+## 📁 Estructura del Proyecto
+
+```
+Proyecto-IX-G3-Data-Scientist-IA-developer/
+├── backend/                      # Código del backend
+│   ├── controllers/              # Lógica de controladores
+│   │   ├── health_controller.py
+│   │   ├── predict_controller.py
+│   │   ├── model_controller.py
+│   │   ├── stats_controller.py
+│   │   └── dataset_statistics_controller.py
+│   ├── routes/                   # Definición de endpoints
+│   │   ├── health.py
+│   │   ├── predict.py
+│   │   ├── model.py
+│   │   └── stats.py
+│   ├── services/                 # Lógica de negocio
+│   │   ├── model_service.py      # Gestión de modelos ML
+│   │   ├── preprocessing_service.py  # Preprocesamiento
+│   │   ├── stats_service.py      # Estadísticas de predicciones
+│   │   └── dataset_statistics_service.py  # Estadísticas del dataset
+│   ├── schemas/                  # Modelos Pydantic
+│   │   ├── prediction.py
+│   │   ├── model.py
+│   │   ├── stats.py
+│   │   └── health.py
+│   ├── database/                 # Configuración de BD
+│   │   ├── connection.py         # Conexión SQLAlchemy
+│   │   ├── models.py             # Modelos de BD
+│   │   └── crud.py               # Operaciones CRUD
+│   ├── data/                     # Datos preprocesados
+│   │   ├── X_test_scaled.pkl
+│   │   ├── y_test.pkl
+│   │   └── scaler.pkl
+│   ├── config.py                 # Configuración de la aplicación
+│   └── main.py                   # Punto de entrada FastAPI
+│
+├── models/                        # Modelos ML entrenados
+│   ├── logistic_regression_model.pkl
+│   ├── random_forest_model.pkl
+│   ├── xgboost_model_no_smote.pkl
+│   └── [archivos de resultados y parámetros]
+│
+├── notebooks/                    # Jupyter notebooks
+│   ├── stroke_preprocessing.ipynb
+│   ├── stroke_logistic_regression.ipynb
+│   ├── stroke_random_forest.ipynb
+│   ├── stroke_xgboost.ipynb
+│   └── stroke_eda_complete.ipynb
+│
+├── src/                          # Datos fuente
+│   └── data/
+│       └── stroke_dataset.csv    # Dataset original
+│
+├── data/                         # Datos preprocesados (raíz)
+│   ├── X_test_scaled.pkl
+│   ├── y_test.pkl
+│   └── scaler.pkl
+│
+├── tests/                        # Tests unitarios
+├── Dockerfile                    # Configuración Docker
+├── .render.yaml                  # Configuración Render
+├── requirements.txt              # Dependencias Python
+└── README.md                     # Este archivo
+```
+
+## 🔌 Endpoints de la API
+
+### Health & Status
+
+#### `GET /health`
+Verifica el estado de salud de la API.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00",
+  "version": "1.0.0"
+}
+```
+
+#### `GET /status`
+Obtiene información del estado del sistema y modelos.
+
+#### `GET /control-center`
+Dashboard completo de control del sistema con métricas detalladas.
+
+### Predicciones
+
+#### `POST /predict`
+Realiza una predicción individual de riesgo de ictus.
+
+**Request:**
+```json
+{
+  "age": 67,
+  "hypertension": 1,
+  "heart_disease": 0,
+  "avg_glucose_level": 228.69,
+  "bmi": 36.6,
+  "gender": "Male",
+  "ever_married": "Yes",
+  "work_type": "Private",
+  "Residence_type": "Urban",
+  "smoking_status": "formerly smoked",
+  "model_name": "logistic_regression"  // opcional
+}
+```
+
+**Response:**
+```json
+{
+  "prediction": 1,
+  "probability": 0.85,
+  "model_used": "logistic_regression_model.pkl",
+  "confidence": "High"
+}
+```
+
+#### `POST /predict/batch`
+Realiza predicciones por lotes (múltiples pacientes).
+
+**Request:**
+```json
+{
+  "data": [
+    { /* paciente 1 */ },
+    { /* paciente 2 */ }
+  ],
+  "model_name": "logistic_regression"  // opcional
+}
+```
+
+### Modelos
+
+#### `GET /models`
+Lista todos los modelos disponibles.
+
+**Response:**
+```json
+{
+  "models": [
+    "logistic_regression_model.pkl",
+    "random_forest_model.pkl",
+    "xgboost_model_no_smote.pkl"
+  ]
+}
+```
+
+#### `GET /models/{model_name}`
+Obtiene información detallada de un modelo específico.
+
+**Response incluye:**
+- Métricas de rendimiento (accuracy, precision, recall, F1, ROC-AUC)
+- Hiperparámetros
+- Feature importance
+- Matriz de confusión
+- Curvas ROC y Precision-Recall
+- Umbral óptimo
+
+### Estadísticas
+
+#### `GET /stats/overview`
+Estadísticas generales de las predicciones realizadas.
+
+#### `GET /stats/risk-distribution`
+Distribución de riesgo (bajo, medio, alto).
+
+#### `GET /stats/models/compare`
+Comparación de rendimiento entre modelos.
+
+#### `GET /dashboard`
+Dashboard consolidado con toda la información relevante.
+
+### Estadísticas del Dataset
+
+#### `GET /statistics/overview`
+Vista general del dataset original (muestras, características, balance de clases).
+
+#### `GET /statistics/demographics`
+Estadísticas demográficas (edad, género, estado civil).
+
+#### `GET /statistics/clinical`
+Estadísticas clínicas (hipertensión, enfermedad cardíaca, glucosa, BMI, tabaquismo).
+
+#### `GET /statistics/correlations`
+Matriz de correlación y factores de riesgo principales.
+
+#### `GET /statistics/high-risk-profiles`
+Perfiles de alto riesgo identificados en el dataset.
+
+## 🗄️ Base de Datos
+
+### PostgreSQL (Producción)
+
+El sistema utiliza PostgreSQL en producción para almacenar:
+
+#### Tabla: `patient_data`
+Almacena los datos RAW de los pacientes (sin transformar).
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | Integer | PK, autoincrement |
+| `created_at` | DateTime | Timestamp automático |
+| `age` | Integer | Edad del paciente |
+| `gender` | String(10) | Género (Male/Female/Other) |
+| `hypertension` | Boolean | Hipertensión (0/1) |
+| `heart_disease` | Boolean | Enfermedad cardíaca (0/1) |
+| `ever_married` | String(3) | Estado civil (Yes/No) |
+| `work_type` | String(20) | Tipo de trabajo |
+| `residence_type` | String(10) | Tipo de residencia (Urban/Rural) |
+| `avg_glucose_level` | Float | Nivel promedio de glucosa |
+| `bmi` | Float | Índice de masa corporal |
+| `smoking_status` | String(20) | Estado de tabaquismo |
+
+#### Tabla: `predictions`
+Almacena los resultados de las predicciones.
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | Integer | PK, autoincrement |
+| `patient_data_id` | Integer | FK a `patient_data.id` |
+| `created_at` | DateTime | Timestamp automático |
+| `model_name` | String(50) | Modelo utilizado |
+| `prediction` | Integer | Resultado (0=No stroke, 1=Stroke) |
+| `probability` | Float | Probabilidad (0.0-1.0) |
+| `risk_level` | String(10) | Nivel de riesgo (Low/Medium/High) |
+
+### SQLite (Desarrollo)
+
+Para desarrollo local, el sistema utiliza SQLite como fallback automático si `DATABASE_URL` no está configurado.
+
+## 🤖 Modelos de Machine Learning
+
+### Modelos Entrenados
+
+1. **Logistic Regression** (Modelo por defecto)
+   - Archivo: `logistic_regression_model.pkl`
+   - **Métricas destacadas:**
+     - Recall: 100% (prioritario en contexto médico)
+     - Accuracy: ~85%
+     - ROC-AUC: ~0.83
+
+2. **Random Forest**
+   - Archivo: `random_forest_model.pkl`
+   - **Características:**
+     - Feature importance disponible
+     - Mejor accuracy general
+
+3. **XGBoost**
+   - Archivo: `xgboost_model_no_smote.pkl`
+   - **Características:**
+     - Optimizado con Optuna
+     - Sin SMOTE (mejor rendimiento)
+
+### Pipeline de Preprocesamiento
+
+1. **Feature Engineering**
+   - Categorización de edad
+   - Categorización de glucosa
+   - Categorización de BMI
+   - Transformación de variables categóricas
+
+2. **Encoding**
+   - Label Encoding para variables categóricas
+   - One-Hot Encoding donde es necesario
+
+3. **Scaling**
+   - StandardScaler para normalización
+
+4. **Balanceo de Clases**
+   - SMOTE aplicado en algunos modelos
+   - Estrategia de balanceo según modelo
+
+### Selección del Modelo
+
+El modelo **Logistic Regression** se selecciona como predeterminado debido a:
+- **100% de Recall**: Detecta todos los casos positivos (crítico en medicina)
+- Interpretabilidad: Fácil de explicar a profesionales médicos
+- Rendimiento estable y confiable
+
+## 📊 MLflow
+
+MLflow se utiliza para el tracking de experimentos y gestión del ciclo de vida de modelos ML.
+
+### Configuración
 
 ```bash
-# Clonar repositorio
-git clone <tu-repo>
+# Iniciar MLflow UI
+mlflow ui --backend-store-uri ./notebooks/mlruns \
+          --default-artifact-root ./notebooks/mlruns \
+          --host 0.0.0.0 \
+          --port 5000
+```
+
+### Funcionalidades
+
+- **Tracking de Experimentos**: Registro de hiperparámetros, métricas y artefactos
+- **Model Registry**: Gestión de versiones de modelos
+- **Reproducibilidad**: Logging completo de entornos y dependencias
+
+### Estructura MLflow
+
+```
+notebooks/mlruns/
+├── 0/                    # Experimento por defecto
+│   ├── meta.yaml
+│   └── [runs]/
+│       ├── [run_id]/
+│       │   ├── metrics/
+│       │   ├── params/
+│       │   └── artifacts/
+│       │       └── model.pkl
+```
+
+## 🚀 Instalación y Configuración
+
+### Requisitos Previos
+
+- Python 3.11+
+- PostgreSQL (producción) o SQLite (desarrollo)
+- Git
+
+### Instalación Local
+
+1. **Clonar el repositorio**
+```bash
+git clone https://github.com/Bootcamp-IA-P5/Proyecto-IX-G3-Data-Scientist-IA-developer.git
 cd Proyecto-IX-G3-Data-Scientist-IA-developer
+```
 
-# Construir y ejecutar
-docker-compose up --build
+2. **Crear entorno virtual**
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# o
+venv\Scripts\activate  # Windows
+```
 
-### Acceder a la aplicación
+3. **Instalar dependencias**
+```bash
+pip install -r requirements.txt
+```
 
-- __API__: [](http://localhost:8000)<http://localhost:8000>
-- __Documentación API__: [](http://localhost:8000/docs)<http://localhost:8000/docs>
-- __Frontend__: [](http://localhost)<http://localhost> (cuando esté integrado)
-- __Health Check__: [](http://localhost:8000/health)<http://localhost:8000/health>
+4. **Configurar variables de entorno**
+Crear archivo `.env`:
+```env
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/stroke_db
+# O dejar vacío para usar SQLite local
 
-## 🐳 Docker
+# Environment
+ENVIRONMENT=development
+DEBUG=True
 
-### Servicios Disponibles
-# Solo backend
-docker-compose up backend
+# CORS (opcional, tiene valores por defecto)
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 
-# Backend + Frontend (cuando esté disponible)
-docker-compose --profile frontend up
-
-# Producción con Nginx
-docker-compose --profile production up
-
-### Estructura de Contenedores
-
-- __backend__: API FastAPI con modelos ML
-- __frontend__: Interfaz React/TypeScript (opcional)
-- __nginx__: Proxy reverso para producción
-
-### Variables de Entorno
-# Archivo .env
-ENVIRONMENT=production
-DEBUG=false
-HOST=0.0.0.0
+# Port (opcional)
 PORT=8000
+```
+
+5. **Inicializar base de datos**
+```bash
+python -c "from backend.database.connection import init_db; init_db()"
+```
+
+6. **Ejecutar servidor**
+```bash
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+La API estará disponible en `http://localhost:8000`
+Documentación interactiva en `http://localhost:8000/docs`
+
+## 🐳 Deployment
+
+### Docker
+
+El proyecto incluye un `Dockerfile` optimizado para deployment:
+
+```bash
+# Build
+docker build -t stroke-prediction-api .
+
+# Run
+docker run -p 8000:8000 \
+  -e DATABASE_URL=postgresql://... \
+  -e CORS_ORIGINS=https://... \
+  stroke-prediction-api
+```
+
+### Render
+
+El proyecto está configurado para deployment automático en Render:
+
+1. **Configuración en `.render.yaml`**
+   - Runtime: Docker
+   - Auto-deploy: Habilitado
+
+2. **Variables de Entorno en Render Dashboard**
+   - `DATABASE_URL`: URL de PostgreSQL
+   - `CORS_ORIGINS`: Orígenes permitidos (comma-separated)
+   - `ENVIRONMENT`: production
+   - `DEBUG`: false
+
+3. **Deployment Automático**
+   - Push a `feat/deploy` → Deploy automático
+   - Build usando Dockerfile
+   - Health checks automáticos
 
 ## 📖 Uso de la API
 
-### Predicción Individual
-curl -X POST "http://localhost:8000/predict" \
+### Ejemplo con cURL
+
+```bash
+# Health check
+curl https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com/health
+
+# Predicción
+curl -X POST https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com/predict \
   -H "Content-Type: application/json" \
   -d '{
-    "age": 65,
+    "age": 67,
     "hypertension": 1,
     "heart_disease": 0,
-    "avg_glucose_level": 150,
-    "bmi": 28,
+    "avg_glucose_level": 228.69,
+    "bmi": 36.6,
     "gender": "Male",
     "ever_married": "Yes",
     "work_type": "Private",
     "Residence_type": "Urban",
-    "smoking_status": "never smoked"
+    "smoking_status": "formerly smoked"
   }'
 
-__Respuesta:__
+# Listar modelos
+curl https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com/models
 
-```
+# Información de modelo
+curl https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com/models/logistic_regression_model.pkl
 ```
 
-{
-  "prediction": 1,
-  "probability": 0.704,
-  "model_used": "logistic_regression_model.pkl",
-  "confidence": "High"
-}
+### Ejemplo con Python
 
-### Predicción Batch
+```python
+import requests
 
-```
-```
-curl -X POST "http://localhost:8000/predict/batch" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "data": [
-      {
-        "age": 65,
+# Predicción
+response = requests.post(
+    "https://proyecto-ix-g3-data-scientist-ia-78z0.onrender.com/predict",
+    json={
+        "age": 67,
         "hypertension": 1,
         "heart_disease": 0,
-        "avg_glucose_level": 150,
-        "bmi": 28,
+        "avg_glucose_level": 228.69,
+        "bmi": 36.6,
         "gender": "Male",
         "ever_married": "Yes",
         "work_type": "Private",
         "Residence_type": "Urban",
-        "smoking_status": "never smoked"
-      }
-    ]
-  }'
+        "smoking_status": "formerly smoked"
+    }
+)
 
-### Health Check
-
+result = response.json()
+print(f"Predicción: {result['prediction']}")
+print(f"Probabilidad: {result['probability']}")
+print(f"Confianza: {result['confidence']}")
 ```
-```
-curl http://localhost:8000/health
-# {"status": "healthy", "message": "API is running"}
 
-## 🔧 Desarrollo
+## 👥 Contribuidores
 
-### Configuración del Entorno
+- **Backend Development**: Bootcamp IA P5 - Grupo 3
+- **Frontend Development**: [Repositorio Frontend](https://github.com/Bootcamp-IA-P5/Proyecto-IX-G3-Data-Scientist-IA-developer--Frontend)
 
-```
-```
-# Instalar dependencias
-pip install -r requirements.txt
+## 📝 Licencia
 
-# Ejecutar en desarrollo
-cd backend
-uvicorn main:app --reload
+Este proyecto es parte del Bootcamp IA P5.
 
-### Estructura del Proyecto
+## 🔗 Enlaces Útiles
 
-```
-```
-Proyecto-IX-G3-Data-Scientist-IA-developer/
-├── backend/                 # API FastAPI
-│   ├── main.py             # Punto de entrada
-│   ├── config.py           # Configuración
-│   ├── routes/             # Endpoints
-│   ├── controllers/        # Lógica de negocio
-│   ├── services/           # Servicios (ML, preprocessing)
-│   └── schemas/            # Modelos de datos
-├── data/                   # Datos de entrenamiento y preprocessing
-├── models/                 # Modelos entrenados (.pkl)
-├── frontend/               # Interfaz React/TypeScript (futuro)
-├── notebooks/              # Jupyter notebooks de análisis
-├── visualizations/         # Gráficos y visualizaciones
-├── docker-compose.yml      # Configuración Docker
-├── requirements.txt        # Dependencias Python
-└── README.md              # Esta documentación
-
-
-## 📊 Modelos Disponibles
-
-| Modelo | Archivo | Estado | Precisión | |--------|---------|--------|-----------| | Regresión Logística | `logistic_regression_model.pkl` | ✅ Activo | 85.2% | | Random Forest | `random_forest_model.pkl` | 🔄 Disponible | 87.1% | | XGBoost | `xgboost_model_no_smote.pkl` | 🔄 Disponible | 86.8% |
-
-### Features Utilizadas
-
-- __Demográficos__: Edad, género, estado civil
-- __Clínicos__: Hipertensión, enfermedad cardíaca, nivel de glucosa
-- __Antropométricos__: BMI, tipo de residencia
-- __Hábitos__: Tipo de trabajo, estado de fumador
-- __Ingeniería de Features__: Categorías de edad/glucosa/BMI, riesgo compuesto
-
-## 🤝 Contribución
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-### Guías de Contribución
-
-- Sigue PEP 8 para código Python
-- Añade tests para nuevas funcionalidades
-- Actualiza documentación según cambios
-- Usa commits descriptivos
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
-## 🙏 Agradecimientos
-
-- Dataset: [Kaggle Stroke Prediction Dataset](https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset)
-- Framework: [FastAPI](https://fastapi.tiangolo.com) y [Scikit-learn](https://scikit-learn.org)
-- Contenedorización: [Docker](https://docker.com)
+- [Documentación FastAPI](https://fastapi.tiangolo.com/)
+- [Documentación MLflow](https://mlflow.org/docs/latest/index.html)
+- [Documentación XGBoost](https://xgboost.readthedocs.io/)
+- [Render Documentation](https://render.com/docs)
 
 ---
 
-__Desarrollado con ❤️ por el equipo de Data Science e IA__
+**Versión**: 1.0.0  
+**Última actualización**: Enero 2025
