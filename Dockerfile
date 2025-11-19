@@ -23,11 +23,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código
 COPY backend/ ./backend
 COPY models/ models/
-COPY data/ data/
+COPY src/ ./src
 COPY tests/ tests/
 
 EXPOSE 8000
 
 ENV PYTHONPATH=/app
 
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Usar PORT de Render si está disponible, sino 8000 por defecto
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

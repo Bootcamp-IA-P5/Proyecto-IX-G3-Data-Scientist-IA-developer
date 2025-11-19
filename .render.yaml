@@ -7,6 +7,8 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
-        value: false
+        value: "false"
+      # DATABASE_URL debe configurarse en el dashboard de Render
+      # CORS_ORIGINS debe configurarse en el dashboard de Render
     autoDeploy: true
 

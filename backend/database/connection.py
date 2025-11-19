@@ -10,13 +10,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # PostgreSQL connection URL
+# If DATABASE_URL is not set, use SQLite as fallback for local development
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL is None:
+    # Fallback to SQLite for local development
+    DATABASE_URL = "sqlite:///./stroke_prediction.db"
+    print("⚠️  DATABASE_URL not set. Using SQLite for local development.")
 
 # SQLAlchemy engine
 engine = create_engine(
     DATABASE_URL,
     echo=True,  # Change to False in production
     pool_pre_ping=True,  # Verifies connections before using them
+    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 )
 
 # Session creator
