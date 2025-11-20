@@ -1,0 +1,110 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: stroke-db
+    environment:
+      - POSTGRES_USER=stroke_user
+      - POSTGRES_PASSWORD=stroke_pass
+      - POSTGRES_DB=stroke_predictions_db
+    ports:
+      - "5432:5432"  # Expuesto para desarrollo local
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - stroke-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stroke_user -d stroke_predictions_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # Backend API - FastAPI
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro  # Montamos modelos como solo lectura
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql://stroke_user:stroke_pass@db:5432/stroke_predictions_db
+    networks:
+      - stroke-network
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Frontend - Streamlit (temporal hasta React)
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    networks:
+      - stroke-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles: ["frontend"]
+
+  # Nginx Proxy (opcional pero recomendado para producción)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - stroke-network
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    profiles:
+      - production  # Solo se ejecuta con --profile production
+
+  # pgAdmin - Herramienta visual para PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: stroke-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@stroke.com
+      - PGADMIN_DEFAULT_PASSWORD=admin123
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    ports:
+      - "5050:80"  # Acceso web en http://localhost:5050
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - stroke-network
+    depends_on:
+      - db
+    restart: unless-stopped
+
+networks:
+  stroke-network:
+    driver: bridge
+
+volumes:
+  postgres-data:  # Volumen para persistencia de PostgreSQL
+    driver: local
+  models-data:
+    driver: local
+  pgadmin-data:  # Volumen para persistencia de pgAdmin
+    driver: local

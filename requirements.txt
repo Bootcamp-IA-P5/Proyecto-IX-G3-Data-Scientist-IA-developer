@@ -1,0 +1,39 @@
+# API Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Machine Learning Core
+numpy==1.26.4
+pandas==2.2.0
+scikit-learn==1.7.2
+joblib==1.3.2
+
+# Machine Learning Advanced
+optuna==3.2.0
+imbalanced-learn==0.14.0
+xgboost==2.0.3
+
+# Visualization
+matplotlib==3.10.7
+seaborn==0.13.2
+
+# MLflow Tracking
+mlflow==3.6.0
+
+# Utilities
+python-multipart==0.0.6  # For file uploads
+python-dotenv==1.0.0  # For environment variables
+
+# Database
+sqlalchemy==2.0.23  # ORM para gestión de base de datos
+psycopg2-binary==2.9.9  # Driver PostgreSQL
+alembic==1.13.1  # Migraciones de base de datos
+
+# Unit test
+pytest==7.4.3
+httpx==0.25.2
+
+# Neural networks
+tensorflow==2.15.0

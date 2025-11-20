@@ -1,0 +1,70 @@
+# Entorno virtual de Python
+venv/
+.venv/
+*.pyc
+__pycache__/
+
+#Archivos de caché y compilación
+pycache/
+*.pyc
+*.pyd
+
+# Archivos específicos de Pytest
+.pytest_cache/
+
+# Archivos de datos o modelos guardados (si no deben ir al repositorio)
+*.joblib
+*.h5
+
+# Carpeta de datos procesados
+data/raw/
+data/processed/
+
+
+# Archivos de macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails de macOS
+._*
+
+# Archivos temporales de macOS
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directorios de red en macOS
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Archivos de Jupyter Notebook
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Archivos de entorno
+.env
+.env.local
+
+# Archivos de IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# MLflow tracking (cubre mlruns/ en cualquier ubicación)
+mlruns/
+**/mlruns/
+notebooks/mlruns/
+
+# Archivos de datos procesados (si no deben ir al repositorio)
+data/processed/
+backend/data/
